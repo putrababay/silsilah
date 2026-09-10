@@ -1,9 +1,10 @@
-const CACHE_VERSION = "silsilah-v1";
+const CACHE_VERSION = "silsilah-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icons/icon.svg",
+  "./icons/icon-32.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-192.png",

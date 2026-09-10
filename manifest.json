@@ -2,17 +2,23 @@
   "id": "https://silsilah.sibag.us/",
   "name": "Silsilah",
   "short_name": "Silsilah",
-  "description": "Aplikasi silsilah keluarga offline: pohon visual, kartu generasi, cadangan JSON, serta unduh PNG dan PDF.",
+  "description": "Aplikasi silsilah keluarga : visualisasi, kartu generasi, cadangan data, serta unduh PNG dan PDF.",
   "lang": "id",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#0284c7",
-  "categories": ["lifestyle", "utilities"],
+  "categories": [
+    "lifestyle",
+    "utilities"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {
