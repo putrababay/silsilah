@@ -303,7 +303,7 @@
       }
       @media all and (display-mode: standalone) {
         header.app-header {
-          padding-top: max(44px, env(safe-area-inset-top, 0px));
+          padding-top: env(safe-area-inset-top, 0px);
         }
       }
       #treeViewSection,
@@ -315,6 +315,78 @@
         min-height: 0;
         -webkit-overflow-scrolling: touch;
         touch-action: none;
+      }
+      .desk-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.75rem;
+        transition: all 0.2s ease;
+      }
+      .desk-nav-btn.is-idle {
+        color: #94a3b8;
+        background: transparent;
+        font-weight: 500;
+      }
+      .desk-nav-btn.is-idle:hover {
+        color: #fff;
+        background: rgba(148, 163, 184, 0.12);
+      }
+      .desk-nav-btn.is-active {
+        color: #fff;
+        background: #0284c7;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(2, 132, 199, 0.35);
+      }
+      .mob-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem;
+        padding: 0.3rem 0.15rem;
+        border-radius: 0.85rem;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+      .mob-nav-item.is-idle {
+        color: #64748b;
+        background: transparent;
+        opacity: 0.7;
+      }
+      .mob-nav-item.is-active {
+        color: #7dd3fc;
+        background: rgba(14, 165, 233, 0.16);
+        opacity: 1;
+        font-weight: 700;
+      }
+      .mob-nav-item.is-active::before {
+        content: "";
+        position: absolute;
+        top: 0.1rem;
+        left: 50%;
+        width: 1.15rem;
+        height: 0.18rem;
+        border-radius: 999px;
+        background: #38bdf8;
+        transform: translateX(-50%);
+      }
+      .mob-nav-item.mob-nav-add {
+        color: #34d399;
+        opacity: 1;
+        background: transparent;
+      }
+      .mob-nav-item.mob-nav-add.is-idle,
+      .mob-nav-item.mob-nav-add.is-active {
+        color: #34d399;
+        background: transparent;
+        font-weight: 600;
+      }
+      .mob-nav-item.mob-nav-add::before {
+        display: none;
       }
       .mobile-bottom-nav {
         background: #0f172a;
@@ -343,20 +415,29 @@
           padding-bottom: 0;
         }
         header.app-header .header-inner {
-          padding-top: 0.35rem;
-          padding-bottom: 0.45rem;
+          padding-top: 0.15rem;
+          padding-bottom: 0.3rem;
+        }
+        header.app-header img {
+          width: 2rem;
+          height: 2rem;
+        }
+        header.app-header h1 {
+          font-size: 0.95rem;
+          line-height: 1.2;
         }
         main.app-main {
+          padding-top: 0.35rem;
           padding-bottom: calc(3.4rem + env(safe-area-inset-bottom, 0px));
         }
         .app-notes-footer {
           display: none;
         }
         .app-search-bar {
-          display: none;
+          display: none !important;
         }
         .app-search-bar.is-search-open {
-          display: flex;
+          display: flex !important;
         }
         .mobile-bottom-nav {
           min-height: calc(3.25rem + env(safe-area-inset-bottom, 0px));
@@ -517,21 +598,21 @@
             <button
               id="viewTreeBtn"
               onclick="switchView('tree')"
-              class="px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-brand-600 shadow transition flex items-center gap-1.5">
+              class="desk-nav-btn is-active">
               <i class="fa-solid fa-diagram-project"></i>
               <span>Visual Pohon</span>
             </button>
             <button
               id="viewCardsBtn"
               onclick="switchView('cards')"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+              class="desk-nav-btn is-idle">
               <i class="fa-solid fa-layer-group"></i>
               <span>Kartu Generasi</span>
             </button>
             <button
               id="viewListBtn"
               onclick="switchView('list')"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+              class="desk-nav-btn is-idle">
               <i class="fa-solid fa-list-ul"></i> <span>Daftar Data</span>
             </button>
           </div>
@@ -650,17 +731,7 @@
       <!-- Search and Statistics Bar -->
       <div
         class="app-search-bar bg-white p-2 sm:p-3 rounded-2xl shadow-sm border border-slate-200/80 mb-2 sm:mb-3 flex flex-col md:flex-row items-center justify-between gap-2 sm:gap-3 shrink-0">
-        <div class="flex items-center gap-2 w-full md:flex-1 md:max-w-2xl">
-          <button
-            id="searchToggleBtn"
-            type="button"
-            onclick="toggleMobileSearch()"
-            title="Cari &amp; ringkasan"
-            aria-expanded="false"
-            class="search-toggle-btn md:hidden p-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700 shrink-0">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </button>
-          <div class="relative flex-1 min-w-0">
+        <div class="relative w-full md:flex-1 md:max-w-2xl">
           <i
             class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
           <input
@@ -676,7 +747,6 @@
             class="md:hidden absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg text-slate-400 hover:text-slate-600 flex items-center justify-center">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
-          </div>
         </div>
 
         <div
@@ -933,27 +1003,27 @@
       <button
         onclick="switchView('tree')"
         id="mobNavTree"
-        class="flex flex-col items-center gap-0.5 text-brand-400">
+        class="mob-nav-item is-active">
         <i class="fa-solid fa-diagram-project text-base"></i>
         <span class="text-[10px] font-medium">Visual</span>
       </button>
       <button
         onclick="switchView('cards')"
         id="mobNavCards"
-        class="flex flex-col items-center gap-0.5 hover:text-white">
+        class="mob-nav-item is-idle">
         <i class="fa-solid fa-layer-group text-base"></i>
         <span class="text-[10px] font-medium">Kartu</span>
       </button>
       <button
         onclick="switchView('list')"
         id="mobNavList"
-        class="flex flex-col items-center gap-0.5 hover:text-white">
+        class="mob-nav-item is-idle">
         <i class="fa-solid fa-list-ul text-base"></i>
         <span class="text-[10px] font-medium">Daftar</span>
       </button>
       <button
         onclick="openMemberModal()"
-        class="flex flex-col items-center gap-0.5 text-emerald-400">
+        class="mob-nav-item mob-nav-add">
         <i class="fa-solid fa-circle-plus text-lg"></i>
         <span class="text-[10px] font-medium">Tambah</span>
       </button>
@@ -1730,7 +1800,7 @@
       let currentTreeZoom = 1.0;
       let treeMemberBranchMap = {};
       let treeNatalBranchMap = {};
-      const MIN_TREE_ZOOM = 0.4;
+      const MIN_TREE_ZOOM = 0.15;
       const MAX_TREE_ZOOM = 2.5;
       const GUIDE_STORAGE_KEY = "silsilah_guide_seen_v1";
       const TREE_LAYOUT_KEY = "silsilah_tree_layout_v1";
@@ -2706,19 +2776,20 @@
         document.querySelectorAll(".search-toggle-btn").forEach((btn) => {
           btn.setAttribute("aria-expanded", open ? "true" : "false");
           const icon = btn.querySelector("i");
-          if (!icon) return;
-          if (btn.id === "searchToggleBtn") {
-            btn.classList.toggle("bg-brand-600", open);
-            btn.classList.toggle("text-white", open);
-            btn.classList.toggle("bg-slate-800", !open);
-            btn.classList.toggle("text-slate-300", !open);
+          if (icon) {
+            icon.className = open
+              ? "fa-solid fa-xmark"
+              : "fa-solid fa-magnifying-glass";
           }
-          icon.className = open
-            ? "fa-solid fa-xmark"
-            : "fa-solid fa-magnifying-glass";
         });
         if (open) {
           input?.focus();
+        }
+        const treeSearch = document.querySelector(
+          "#treeToolbarControls .search-toggle-btn",
+        );
+        if (treeSearch) {
+          treeSearch.classList.toggle("hidden", open);
         }
         updateMobileSearchLauncher();
       }
@@ -4354,9 +4425,8 @@
           const btn = document.getElementById(`view${type}Btn`);
           const isCurrent = type.toLowerCase() === viewName;
           if (btn) {
-            btn.className = isCurrent
-              ? "px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-brand-600 shadow transition flex items-center gap-1.5"
-              : "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5";
+            btn.classList.toggle("is-active", isCurrent);
+            btn.classList.toggle("is-idle", !isCurrent);
           }
         });
 
@@ -4368,10 +4438,8 @@
         Object.entries(mobNav).forEach(([view, id]) => {
           const el = document.getElementById(id);
           if (!el) return;
-          el.className =
-            view === viewName
-              ? "flex flex-col items-center gap-0.5 text-brand-400"
-              : "flex flex-col items-center gap-0.5 hover:text-white";
+          el.classList.toggle("is-active", view === viewName);
+          el.classList.toggle("is-idle", view !== viewName);
         });
 
         loadAndRenderData();
