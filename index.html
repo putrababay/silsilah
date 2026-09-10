@@ -1,0 +1,4131 @@
+<!doctype html>
+<html lang="id" class="h-full overflow-hidden bg-slate-50">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Silsilah | Pohon Keluarga Visual Offline</title>
+    <meta
+      name="description"
+      content="Aplikasi Silsilah untuk mencatat anggota keluarga secara offline. Pohon visual interaktif, kartu generasi, cadangan JSON, unduh PNG/PDF, dan bisa dipasang sebagai PWA." />
+    <meta
+      name="keywords"
+      content="silsilah, silsilah keluarga, pohon keluarga, family tree, PWA, IndexedDB, cadangan JSON, restore silsilah" />
+    <meta name="author" content="Silsilah" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0284c7" />
+    <meta name="application-name" content="Silsilah" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Silsilah" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:url" content="https://silsilah.sibag.us/" />
+    <meta property="og:title" content="Silsilah | Pohon Keluarga Visual Offline" />
+    <meta
+      property="og:description"
+      content="Catat dan telusuri silsilah keluarga secara offline. Pohon visual, kartu generasi, cadangan JSON, unduh PNG/PDF, dan instal sebagai aplikasi." />
+    <meta property="og:site_name" content="Silsilah" />
+    <meta
+      property="og:image"
+      content="https://silsilah.sibag.us/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Silsilah | Pohon Keluarga Visual Offline" />
+    <meta
+      name="twitter:description"
+      content="Aplikasi silsilah keluarga offline: pohon visual, cadangan JSON, unduh PNG/PDF, dan PWA." />
+    <meta
+      name="twitter:image"
+      content="https://silsilah.sibag.us/icons/icon-512.png" />
+    <link rel="canonical" href="https://silsilah.sibag.us/" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Silsilah",
+        "url": "https://silsilah.sibag.us/",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "id",
+        "description": "Aplikasi silsilah keluarga offline untuk mencatat anggota, menampilkan pohon visual, mencadangkan JSON, mengunduh PNG/PDF, dan dipasang sebagai PWA.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "IDR"
+        },
+        "featureList": [
+          "Pohon silsilah visual interaktif",
+          "Kartu generasi",
+          "Daftar anggota keluarga",
+          "Cadangan dan restore JSON",
+          "Ekspor PNG dan PDF beserta foto",
+          "Progressive Web App"
+        ]
+      }
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet" />
+
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+            },
+            colors: {
+              brand: {
+                50: "#f0f9ff",
+                100: "#e0f2fe",
+                500: "#0284c7",
+                600: "#0369a1",
+                700: "#075985",
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      #treeCanvasContainer {
+        cursor: grab;
+        user-select: none;
+      }
+      #treeCanvasContainer.is-dragging {
+        cursor: grabbing;
+      }
+
+      #treeSvgLines {
+        pointer-events: none;
+      }
+      #treeSvgLines path.tree-line-clickable {
+        pointer-events: stroke;
+        cursor: pointer;
+      }
+
+      /* Base SVG tree line styling */
+      .tree-line-bg {
+        stroke: #ffffff;
+        stroke-width: 6px;
+        fill: none;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        pointer-events: none;
+      }
+      .tree-line-father,
+      .tree-line-mother,
+      .tree-line-descent {
+        stroke: #0284c7;
+        stroke-width: 2.5px;
+        fill: none;
+        transition:
+          stroke 0.3s ease,
+          stroke-width 0.3s ease,
+          opacity 0.3s ease,
+          filter 0.3s ease;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
+      .tree-line-spouse {
+        stroke: #f59e0b;
+        stroke-width: 2.5px;
+        stroke-dasharray: 5 4;
+        fill: none;
+        transition:
+          stroke 0.3s ease,
+          stroke-width 0.3s ease,
+          opacity 0.3s ease,
+          filter 0.3s ease;
+      }
+      .tree-line-helper {
+        stroke: #7c3aed;
+        stroke-width: 2.2px;
+        stroke-dasharray: 7 5;
+        fill: none;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        transition:
+          stroke 0.3s ease,
+          stroke-width 0.3s ease,
+          opacity 0.3s ease,
+          filter 0.3s ease;
+      }
+
+      /* Dynamic SVG Vertical Fence Line for Gen 1 branches */
+      .tree-fence-line {
+        stroke: #cbd5e1;
+        stroke-width: 2px;
+        stroke-dasharray: 6 4;
+        fill: none;
+        pointer-events: none;
+      }
+
+      /* Interactive Highlighted Path Animation — keep each line's own path color */
+      .tree-line-active {
+        stroke-width: 4.5px !important;
+        animation: strokeFlow 1s linear infinite;
+      }
+      .tree-line-descent.tree-line-active,
+      .tree-line-father.tree-line-active,
+      .tree-line-mother.tree-line-active {
+        stroke: #0284c7 !important;
+        stroke-dasharray: 8 4;
+        filter: drop-shadow(0 0 6px rgba(2, 132, 199, 0.65));
+      }
+      .tree-line-spouse.tree-line-active {
+        stroke: #f59e0b !important;
+        stroke-dasharray: 8 4;
+        filter: drop-shadow(0 0 7px rgba(245, 158, 11, 0.8));
+      }
+      .tree-line-helper.tree-line-active {
+        stroke: #7c3aed !important;
+        stroke-width: 3.4px !important;
+        stroke-dasharray: 8 4;
+        filter: drop-shadow(0 0 7px rgba(124, 58, 237, 0.7));
+      }
+      .tree-line-inactive {
+        opacity: 0.15 !important;
+        stroke: #94a3b8 !important;
+        filter: none !important;
+        pointer-events: none;
+      }
+
+      @keyframes strokeFlow {
+        to {
+          stroke-dashoffset: -24;
+        }
+      }
+
+      /* Card highlight and dim states */
+      .node-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .node-card-active {
+        transform: none;
+        box-shadow:
+          0 12px 25px -5px rgba(2, 132, 199, 0.3),
+          0 8px 10px -6px rgba(2, 132, 199, 0.2);
+        border-color: #0284c7 !important;
+        z-index: 30 !important;
+      }
+      .node-card-active-spouse {
+        border-color: #f59e0b !important;
+        box-shadow:
+          0 12px 25px -5px rgba(245, 158, 11, 0.3),
+          0 8px 10px -6px rgba(245, 158, 11, 0.2);
+      }
+      .node-card-dimmed {
+        opacity: 0.3;
+        filter: grayscale(40%);
+      }
+      .node-card-simple h4 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
+      }
+
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      /* Custom Searchable Select Styling */
+      .custom-select-dropdown {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      html,
+      body {
+        height: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+      }
+      body.app-shell {
+        overflow: hidden;
+      }
+      main.app-main {
+        min-height: 0;
+      }
+      #treeViewSection,
+      #cardsViewSection,
+      #listViewSection {
+        min-height: 0;
+      }
+      #treeCanvasContainer {
+        min-height: 0;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mobile-bottom-nav {
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      }
+      @media (max-width: 767px) {
+        body.app-shell {
+          padding-bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+        }
+        #listViewSection {
+          overflow-x: hidden;
+        }
+        #listDesktopTable {
+          display: none;
+        }
+        #memberMobileList {
+          display: block;
+        }
+      }
+      @media (min-width: 768px) {
+        #memberMobileList {
+          display: none;
+        }
+      }
+
+      body.is-tree-preview header,
+      body.is-tree-preview .app-search-bar,
+      body.is-tree-preview .mobile-bottom-nav {
+        display: none !important;
+      }
+      body.is-tree-preview {
+        padding-bottom: 0 !important;
+      }
+      body.is-tree-preview .app-main {
+        padding: 0;
+      }
+      body.is-tree-preview #treeViewSection {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        border-radius: 0;
+        border: none;
+        padding: 0.5rem;
+        background: #f8fafc;
+      }
+      #btnTreeFullscreen {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 30;
+      }
+      body.is-tree-preview #btnTreeFullscreen {
+        top: 0.75rem;
+        right: 0.75rem;
+      }
+      body.is-tree-preview #pwaInstallBanner {
+        display: none !important;
+      }
+      #pwaInstallBanner {
+        display: none;
+      }
+      #pwaInstallBanner.is-visible {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body
+    class="app-shell h-full text-slate-800 font-sans flex flex-col bg-slate-100">
+    <!-- Top Header -->
+    <header
+      class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 shrink-0">
+      <div
+        class="w-full px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div class="flex items-center space-x-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-600 flex items-center justify-center shadow-md shadow-brand-500/20 shrink-0">
+            <i class="fa-solid fa-sitemap text-white text-lg"></i>
+          </div>
+          <div>
+            <h1
+              class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              Silsilah
+              <span
+                class="text-[10px] sm:text-xs bg-brand-500/20 text-brand-300 font-medium px-2 py-0.5 rounded-full border border-brand-500/30 hidden xs:inline-block"
+                >IndexedDB Visual</span
+              >
+            </h1>
+            <p class="text-[11px] text-slate-400 hidden sm:block">
+              Sistem pencatatan offline, penelusuran alur keturunan & ekspor
+              grafik
+            </p>
+          </div>
+        </div>
+
+        <!-- Desktop Navigation -->
+        <div class="hidden md:flex items-center gap-3">
+          <div
+            class="bg-slate-800 p-1 rounded-xl flex items-center border border-slate-700/60">
+            <button
+              id="viewTreeBtn"
+              onclick="switchView('tree')"
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-brand-600 shadow transition flex items-center gap-1.5">
+              <i class="fa-solid fa-diagram-project"></i>
+              <span>Visual Pohon</span>
+            </button>
+            <button
+              id="viewCardsBtn"
+              onclick="switchView('cards')"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group"></i>
+              <span>Kartu Generasi</span>
+            </button>
+            <button
+              id="viewListBtn"
+              onclick="switchView('list')"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+              <i class="fa-solid fa-list-ul"></i> <span>Daftar Data</span>
+            </button>
+          </div>
+
+          <button
+            onclick="openMemberModal()"
+            class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
+            <i class="fa-solid fa-user-plus text-sm"></i>
+            <span>Tambah Anggota</span>
+          </button>
+
+          <!-- Database Options Dropdown -->
+          <div class="relative" id="dbDropdownContainer">
+            <button
+              onclick="toggleDbDropdown(event)"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+              <i class="fa-solid fa-database"></i>
+              <span>Opsi DB</span>
+              <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+            </button>
+            <div
+              id="dbDropdownMenu"
+              class="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1 hidden z-50 text-slate-700 text-xs">
+              <a
+                href="#"
+                onclick="
+                  exportJSON();
+                  closeDbDropdown();
+                "
+                class="px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
+                <i class="fa-solid fa-download text-brand-600"></i> Ekspor (JSON
+                + Foto)
+              </a>
+              <a
+                href="#"
+                onclick="
+                  document.getElementById('importFileInput').click();
+                  closeDbDropdown();
+                "
+                class="px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
+                <i class="fa-solid fa-upload text-brand-600"></i> Impor Restore
+                (JSON)
+              </a>
+              <a
+                href="#"
+                onclick="
+                  openGuideModal();
+                  closeDbDropdown();
+                  return false;
+                "
+                class="px-4 py-2 hover:bg-slate-50 flex items-center gap-2">
+                <i class="fa-solid fa-circle-question text-brand-600"></i> Tata
+                Cara Penggunaan
+              </a>
+              <hr class="my-1 border-slate-100" />
+              <a
+                href="#"
+                onclick="
+                  confirmResetDB();
+                  closeDbDropdown();
+                "
+                class="px-4 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> Reset ke Sample Data
+              </a>
+            </div>
+          </div>
+
+          <button
+            onclick="openGuideModal()"
+            title="Tata cara penggunaan"
+            class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-question text-brand-300"></i>
+            <span>Panduan</span>
+          </button>
+        </div>
+
+        <!-- Mobile Buttons -->
+        <div class="md:hidden flex items-center gap-1.5">
+          <button
+            onclick="openGuideModal()"
+            title="Panduan penggunaan"
+            class="p-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">
+            <i class="fa-solid fa-circle-question"></i>
+          </button>
+          <button
+            onclick="exportJSON()"
+            title="Backup JSON"
+            class="p-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">
+            <i class="fa-solid fa-download"></i>
+          </button>
+          <button
+            onclick="document.getElementById('importFileInput').click()"
+            title="Restore JSON"
+            class="p-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">
+            <i class="fa-solid fa-upload"></i>
+          </button>
+          <button
+            onclick="openMemberModal()"
+            class="bg-emerald-600 text-white p-2 rounded-lg text-xs font-semibold">
+            <i class="fa-solid fa-user-plus"></i>
+          </button>
+        </div>
+
+        <input
+          type="file"
+          id="importFileInput"
+          onchange="importJSON(event)"
+          class="hidden"
+          accept=".json" />
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main
+      class="app-main flex-1 w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-3 flex flex-col overflow-hidden">
+      <!-- Search and Statistics Bar -->
+      <div
+        class="app-search-bar bg-white p-2.5 sm:p-3 rounded-2xl shadow-sm border border-slate-200/80 mb-2 sm:mb-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 shrink-0">
+        <div class="relative w-full sm:flex-1 sm:max-w-2xl">
+          <i
+            class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          <input
+            type="text"
+            id="searchInput"
+            oninput="handleSearch()"
+            placeholder="Cari nama atau anggota keluarga..."
+            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition" />
+        </div>
+
+        <div
+          class="flex items-center gap-4 text-xs text-slate-500 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 pt-2 sm:pt-0 border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <span
+              >Total:
+              <strong id="statTotalMembers" class="text-slate-800">0</strong>
+              Orang</span
+            >
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+            <span
+              >Generasi:
+              <strong id="statTotalGenerations" class="text-slate-800"
+                >0</strong
+              >
+              Tingkat</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 1: Visual Dynamic Tree View -->
+      <div
+        id="treeViewSection"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-2 sm:p-4 flex-1 flex flex-col relative overflow-hidden">
+        <button
+          id="btnTreeFullscreen"
+          type="button"
+          onclick="toggleTreeFullscreen()"
+          title="Preview penuh"
+          class="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm flex items-center justify-center">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+        <!-- Tree Controls Toolbar & Legend -->
+        <div
+          class="flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-3 mb-2 sm:mb-3 pb-2 sm:pb-3 border-b border-slate-100 shrink-0 pr-11">
+          <div class="min-w-0">
+            <h2
+              class="text-sm sm:text-base font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-diagram-project text-brand-500"></i> Diagram
+              Pohon Silsilah Interaktif
+            </h2>
+            <p class="text-[11px] text-slate-500 hidden md:block">
+              Garis batas vertikal memisahkan kelompok keluarga/pasangan yang
+              tidak berhubungan di tingkat atas
+            </p>
+          </div>
+
+          <!-- Export & Line Legend & Zoom Options -->
+          <div class="flex flex-wrap items-center gap-2 text-[10px] sm:text-xs">
+            <!-- Zoom Controls -->
+            <div
+              class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-slate-700">
+              <button
+                onclick="zoomOutTree()"
+                title="Perkecil (-)"
+                class="w-7 h-7 flex items-center justify-center hover:bg-white rounded-lg transition font-bold text-xs text-slate-600 hover:text-slate-900">
+                <i class="fa-solid fa-minus"></i>
+              </button>
+              <span
+                id="zoomLevelDisplay"
+                onclick="resetTreeZoom()"
+                title="Klik untuk Reset Zoom"
+                class="px-2 text-[11px] font-semibold cursor-pointer select-none text-slate-600 hover:text-brand-600"
+                >100%</span
+              >
+              <button
+                onclick="zoomInTree()"
+                title="Perbesar (+)"
+                class="w-7 h-7 flex items-center justify-center hover:bg-white rounded-lg transition font-bold text-xs text-slate-600 hover:text-slate-900">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+
+            <!-- Tree layout filter -->
+            <div
+              class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-slate-700"
+              title="Filter tampilan kartu pohon">
+              <button
+                id="treeLayoutFullBtn"
+                type="button"
+                onclick="setTreeLayoutMode('full')"
+                class="px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold bg-white shadow text-slate-800">
+                Saat ini
+              </button>
+              <button
+                id="treeLayoutSimpleBtn"
+                type="button"
+                onclick="setTreeLayoutMode('simple')"
+                class="px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold text-slate-500 hover:text-slate-800">
+                Simple
+              </button>
+            </div>
+
+            <!-- Line Legend -->
+            <div
+              class="flex items-center gap-2 bg-slate-50 px-2 py-1.5 rounded-xl border border-slate-200/80">
+              <span
+                class="inline-flex items-center gap-1 text-slate-600 font-medium">
+                <span class="w-3 h-0.5 bg-sky-600 rounded"></span>
+                <span class="hidden sm:inline">Keturunan</span>
+              </span>
+              <span
+                class="inline-flex items-center gap-1 text-slate-600 font-medium">
+                <span
+                  class="w-3 h-0.5 border-t-2 border-dashed border-amber-500"></span>
+                <span class="hidden sm:inline">Pasangan</span>
+              </span>
+              <span
+                class="hidden sm:inline-flex items-center gap-1 text-slate-600 font-medium">
+                <span
+                  class="w-3 h-0.5 border-t-2 border-dashed border-violet-500"></span>
+                <span>Orang tua kandung</span>
+              </span>
+              <span
+                class="hidden sm:inline-flex items-center gap-1 text-slate-600 font-medium border-l border-slate-200 pl-2">
+                <span
+                  class="w-3 h-0.5 border-t-2 border-dashed border-slate-400"></span>
+                Pembatas
+              </span>
+            </div>
+
+            <!-- Lock / Active Status Badge -->
+            <div
+              id="highlightStatusBanner"
+              class="hidden items-center gap-1.5 px-2.5 py-1.5 bg-brand-50 text-brand-700 font-semibold rounded-xl border border-brand-200">
+              <i class="fa-solid fa-bullseye text-brand-500 animate-pulse"></i>
+              <span id="highlightedPersonName">Fokus Jalur</span>
+              <button
+                onclick="clearLineageHighlight()"
+                class="ml-1 text-slate-400 hover:text-slate-600 font-bold">
+                &times;
+              </button>
+            </div>
+
+            <!-- Download Options -->
+            <div class="flex items-center gap-1.5">
+              <button
+                onclick="downloadTreeAsImage()"
+                class="px-2.5 sm:px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-file-image"></i>
+                <span class="hidden sm:inline">Unduh PNG</span>
+              </button>
+              <button
+                onclick="downloadTreeAsPDF()"
+                class="px-2.5 sm:px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-xl transition flex items-center gap-1.5">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span class="hidden sm:inline">Unduh PDF</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas Container for Tree -->
+        <div
+          class="flex-1 min-h-0 border border-slate-100 rounded-xl bg-slate-50/50 relative overflow-auto custom-scrollbar p-3 sm:p-6 touch-pan-x touch-pan-y"
+          id="treeCanvasContainer">
+          <div
+            id="treeZoomWrapper"
+            class="relative min-w-max flex flex-col items-center mx-auto transition-transform duration-200 origin-top">
+            <svg
+              id="treeSvgLines"
+              class="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible"></svg>
+            <div
+              id="treeNodesContainer"
+              class="relative z-10 min-w-max flex flex-col items-center space-y-20 py-6">
+              <!-- Dynamic Tree Nodes Inject Here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: Generational Cards View -->
+      <div
+        id="cardsViewSection"
+        class="hidden flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-4 sm:space-y-6 pr-0.5">
+        <div id="generationalCardsContainer" class="space-y-4 sm:space-y-6">
+          <!-- Dynamic Generational Cards Inject Here -->
+        </div>
+      </div>
+
+      <!-- VIEW 3: List / Table View -->
+      <div
+        id="listViewSection"
+        class="hidden flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div id="listDesktopTable" class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead
+              class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+              <tr>
+                <th class="px-4 py-3.5">Anggota</th>
+                <th class="px-4 py-3.5">Kategori</th>
+                <th class="px-4 py-3.5">Generasi</th>
+                <th class="px-4 py-3.5">Status / Tahun</th>
+                <th class="px-4 py-3.5">Orang Tua / Pasangan</th>
+                <th class="px-4 py-3.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody
+              id="memberTableBody"
+              class="divide-y divide-slate-100 text-slate-700">
+              <!-- Dynamic Table Rows Inject Here -->
+            </tbody>
+          </table>
+        </div>
+        <div id="memberMobileList" class="md:hidden p-2 space-y-2"></div>
+      </div>
+    </main>
+
+    <div class="app-notes-footer shrink-0 px-3 py-1.5 text-center text-[10px] leading-snug text-slate-500 bg-white border-t border-slate-200">
+      <span class="font-semibold text-slate-600">Donasi pengembangan:</span> OVO, Dana, ShopeePay
+      <a href="tel:08999686850" class="font-semibold text-emerald-700">08999686850</a>
+      <span class="mx-1 text-slate-300">·</span>
+      Kritik &amp; saran:
+      <a href="https://wa.me/628999686850" class="font-semibold text-brand-700">08999686850</a>
+      — Bayu Anggara, Sidoarjo, Jawa Timur
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <div
+      class="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-40 px-3 pt-2 flex justify-around items-center text-slate-400">
+      <button
+        onclick="switchView('tree')"
+        id="mobNavTree"
+        class="flex flex-col items-center gap-0.5 text-brand-400">
+        <i class="fa-solid fa-diagram-project text-base"></i>
+        <span class="text-[10px] font-medium">Visual</span>
+      </button>
+      <button
+        onclick="switchView('cards')"
+        id="mobNavCards"
+        class="flex flex-col items-center gap-0.5 hover:text-white">
+        <i class="fa-solid fa-layer-group text-base"></i>
+        <span class="text-[10px] font-medium">Kartu</span>
+      </button>
+      <button
+        onclick="switchView('list')"
+        id="mobNavList"
+        class="flex flex-col items-center gap-0.5 hover:text-white">
+        <i class="fa-solid fa-list-ul text-base"></i>
+        <span class="text-[10px] font-medium">Daftar</span>
+      </button>
+      <button
+        onclick="openMemberModal()"
+        class="flex flex-col items-center gap-0.5 text-emerald-400">
+        <i class="fa-solid fa-circle-plus text-lg"></i>
+        <span class="text-[10px] font-medium">Tambah</span>
+      </button>
+    </div>
+
+    <!-- MODAL: Add / Edit Member -->
+    <div
+      id="memberModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-3 sm:p-4">
+      <div
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
+        <div
+          class="bg-slate-900 px-5 py-3.5 flex justify-between items-center text-white shrink-0">
+          <h3 id="modalTitle" class="font-bold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-user-plus text-brand-400"></i> Tambah Anggota
+            Keluarga
+          </h3>
+          <button
+            onclick="closeMemberModal()"
+            class="text-slate-400 hover:text-white transition text-xl">
+            &times;
+          </button>
+        </div>
+
+        <form
+          id="memberForm"
+          onsubmit="saveMemberForm(event)"
+          class="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1 text-xs">
+          <input type="hidden" id="formMemberId" />
+
+          <!-- Photo Upload -->
+          <div
+            class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+            <div class="relative group shrink-0">
+              <img
+                id="formAvatarPreview"
+                src=""
+                alt="Pratinjau foto"
+                crossorigin="anonymous"
+                referrerpolicy="no-referrer"
+                class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-300 bg-white" />
+              <label
+                for="formPhotoInput"
+                class="absolute -bottom-1 -right-1 bg-brand-600 text-white p-1.5 rounded-lg shadow hover:bg-brand-500 cursor-pointer">
+                <i class="fa-solid fa-camera text-xs"></i>
+              </label>
+            </div>
+            <div class="flex-1 w-full text-center sm:text-left">
+              <p class="font-semibold text-slate-800 text-xs mb-0.5">
+                Foto Profil Anggota
+              </p>
+              <p class="text-[10px] text-slate-500 mb-2">
+                Unggah dari HP/Laptop (Otomatis dikompres & terbackup dalam
+                JSON).
+              </p>
+              <input
+                type="file"
+                id="formPhotoInput"
+                accept="image/*"
+                onchange="handlePhotoUpload(event)"
+                class="hidden" />
+              <input type="hidden" id="formAvatarUrl" />
+              <button
+                type="button"
+                onclick="document.getElementById('formPhotoInput').click()"
+                class="px-3 py-1 bg-white border border-slate-300 rounded-lg text-slate-700 text-[11px] hover:bg-slate-100 font-medium transition">
+                <i class="fa-solid fa-upload"></i> Pilih Foto Local
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1"
+              >Nama Lengkap *</label
+            >
+            <input
+              type="text"
+              id="formName"
+              required
+              placeholder="Contoh: Budi Santoso"
+              class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Jenis Kelamin *</label
+              >
+              <select
+                id="formGender"
+                required
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition bg-white">
+                <option value="male">Laki-Laki</option>
+                <option value="female">Perempuan</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Jenis Keanggotaan *</label
+              >
+              <select
+                id="formCategory"
+                required
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition bg-white">
+                <option value="bloodline">🩸 Garis Keturunan Kandung</option>
+                <option value="inlaw">💍 Pasangan / Menantu (Pendatang)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Tingkat Generasi *</label
+              >
+              <input
+                type="number"
+                id="formGeneration"
+                min="1"
+                max="100"
+                required
+                value="1"
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition" />
+              <p class="text-[10px] text-slate-400 mt-1">1 sampai 100.</p>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Anak ke</label
+              >
+              <input
+                type="number"
+                id="formChildOrder"
+                min="1"
+                max="100"
+                placeholder="Contoh: 1"
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition" />
+              <p class="text-[10px] text-slate-400 mt-1">
+                Urutan di antara saudara kandung.
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Status Kehidupan *</label
+              >
+              <select
+                id="formLifeStatus"
+                onchange="toggleDeathYearInput()"
+                required
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition bg-white">
+                <option value="alive">🟢 Masih Hidup</option>
+                <option value="deceased">🕊️ Sudah Wafat</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Tahun Lahir</label
+              >
+              <input
+                type="number"
+                id="formBirthYear"
+                placeholder="Contoh: 1980"
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition" />
+            </div>
+            <div id="deathYearContainer" class="hidden">
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Tahun Wafat</label
+              >
+              <input
+                type="number"
+                id="formDeathYear"
+                placeholder="Contoh: 2020"
+                class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition" />
+            </div>
+          </div>
+
+          <!-- Parents & Spouse Selectors with Searchable Dropdowns -->
+          <div class="border-t border-slate-100 pt-3 space-y-3">
+            <p
+              class="font-bold text-[11px] uppercase tracking-wider text-slate-400 flex items-center justify-between">
+              <span>Hubungan Keluarga</span>
+              <span class="text-[10px] text-brand-600 font-normal"
+                ><i class="fa-solid fa-magnifying-glass"></i> Pencarian
+                Cepat</span
+              >
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Ayah Kandung Searchable Dropdown -->
+              <div class="relative">
+                <label class="block font-semibold text-slate-700 mb-1"
+                  >Ayah Kandung</label
+                >
+                <input type="hidden" id="formFatherId" />
+                <div id="fatherSelectWrapper" class="relative">
+                  <button
+                    type="button"
+                    onclick="toggleSearchSelect('father')"
+                    class="w-full text-left px-3.5 py-2 border border-slate-200 rounded-xl bg-white flex justify-between items-center text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                    <span id="fatherSelectText" class="truncate text-slate-500"
+                      >-- Tidak Ada / Akar --</span
+                    >
+                    <i
+                      class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                  </button>
+                  <div
+                    id="fatherSelectDropdown"
+                    class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-xs">
+                    <input
+                      type="text"
+                      id="fatherSearchInput"
+                      oninput="filterSearchSelect('father')"
+                      placeholder="Cari nama ayah..."
+                      class="w-full px-3 py-1.5 border border-slate-200 rounded-lg mb-1.5 focus:outline-none focus:border-brand-500" />
+                    <div
+                      id="fatherOptionsList"
+                      class="custom-select-dropdown space-y-0.5">
+                      <!-- Dynamic Options -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ibu Kandung Searchable Dropdown -->
+              <div class="relative">
+                <label class="block font-semibold text-slate-700 mb-1"
+                  >Ibu Kandung</label
+                >
+                <input type="hidden" id="formMotherId" />
+                <div id="motherSelectWrapper" class="relative">
+                  <button
+                    type="button"
+                    onclick="toggleSearchSelect('mother')"
+                    class="w-full text-left px-3.5 py-2 border border-slate-200 rounded-xl bg-white flex justify-between items-center text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                    <span id="motherSelectText" class="truncate text-slate-500"
+                      >-- Tidak Ada / Akar --</span
+                    >
+                    <i
+                      class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                  </button>
+                  <div
+                    id="motherSelectDropdown"
+                    class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-xs">
+                    <input
+                      type="text"
+                      id="motherSearchInput"
+                      oninput="filterSearchSelect('mother')"
+                      placeholder="Cari nama ibu..."
+                      class="w-full px-3 py-1.5 border border-slate-200 rounded-lg mb-1.5 focus:outline-none focus:border-brand-500" />
+                    <div
+                      id="motherOptionsList"
+                      class="custom-select-dropdown space-y-0.5">
+                      <!-- Dynamic Options -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Spouse Searchable Dropdown -->
+            <div class="relative">
+              <label class="block font-semibold text-slate-700 mb-1"
+                >Pasangan (Suami / Istri)</label
+              >
+              <input type="hidden" id="formSpouseId" />
+              <div id="spouseSelectWrapper" class="relative">
+                <button
+                  type="button"
+                  onclick="toggleSearchSelect('spouse')"
+                  class="w-full text-left px-3.5 py-2 border border-slate-200 rounded-xl bg-white flex justify-between items-center text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                  <span id="spouseSelectText" class="truncate text-slate-500"
+                    >-- Belum Dipilih --</span
+                  >
+                  <i
+                    class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                </button>
+                <div
+                  id="spouseSelectDropdown"
+                  class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-xs">
+                  <input
+                    type="text"
+                    id="spouseSearchInput"
+                    oninput="filterSearchSelect('spouse')"
+                    placeholder="Cari nama pasangan..."
+                    class="w-full px-3 py-1.5 border border-slate-200 rounded-lg mb-1.5 focus:outline-none focus:border-brand-500" />
+                  <div
+                    id="spouseOptionsList"
+                    class="custom-select-dropdown space-y-0.5">
+                    <!-- Dynamic Options -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="relative">
+                <label class="block font-semibold text-slate-700 mb-1"
+                  >Ayah Menantu</label
+                >
+                <input type="hidden" id="formFatherInLawId" />
+                <div id="fatherInLawSelectWrapper" class="relative">
+                  <button
+                    type="button"
+                    onclick="toggleSearchSelect('fatherInLaw')"
+                    class="w-full text-left px-3.5 py-2 border border-slate-200 rounded-xl bg-white flex justify-between items-center text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                    <span
+                      id="fatherInLawSelectText"
+                      class="truncate text-slate-500"
+                      >-- Tidak Ada / Kosong --</span
+                    >
+                    <i
+                      class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                  </button>
+                  <div
+                    id="fatherInLawSelectDropdown"
+                    class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-xs">
+                    <input
+                      type="text"
+                      id="fatherInLawSearchInput"
+                      oninput="filterSearchSelect('fatherInLaw')"
+                      placeholder="Cari nama ayah menantu..."
+                      class="w-full px-3 py-1.5 border border-slate-200 rounded-lg mb-1.5 focus:outline-none focus:border-brand-500" />
+                    <div
+                      id="fatherInLawOptionsList"
+                      class="custom-select-dropdown space-y-0.5"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="relative">
+                <label class="block font-semibold text-slate-700 mb-1"
+                  >Ibu Menantu</label
+                >
+                <input type="hidden" id="formMotherInLawId" />
+                <div id="motherInLawSelectWrapper" class="relative">
+                  <button
+                    type="button"
+                    onclick="toggleSearchSelect('motherInLaw')"
+                    class="w-full text-left px-3.5 py-2 border border-slate-200 rounded-xl bg-white flex justify-between items-center text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                    <span
+                      id="motherInLawSelectText"
+                      class="truncate text-slate-500"
+                      >-- Tidak Ada / Kosong --</span
+                    >
+                    <i
+                      class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                  </button>
+                  <div
+                    id="motherInLawSelectDropdown"
+                    class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-xs">
+                    <input
+                      type="text"
+                      id="motherInLawSearchInput"
+                      oninput="filterSearchSelect('motherInLaw')"
+                      placeholder="Cari nama ibu menantu..."
+                      class="w-full px-3 py-1.5 border border-slate-200 rounded-lg mb-1.5 focus:outline-none focus:border-brand-500" />
+                    <div
+                      id="motherInLawOptionsList"
+                      class="custom-select-dropdown space-y-0.5"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              Isi ayah/ibu menantu agar pasangan tampil di rumah keluarga
+              tersebut. Jika kedua pasangan mengisi, tampilan berada di tengah
+              kedua keluarga.
+            </p>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1"
+              >Catatan / Bio Singkat</label
+            >
+            <textarea
+              id="formNotes"
+              rows="2"
+              placeholder="Pekerjaan, domisili, atau riwayat singkat..."
+              class="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition"></textarea>
+          </div>
+
+          <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
+            <button
+              type="button"
+              onclick="closeMemberModal()"
+              class="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
+              Batal
+            </button>
+            <button
+              type="submit"
+              class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition shadow-md shadow-brand-600/20">
+              Simpan Data
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: View Member Detail -->
+    <div
+      id="detailModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4">
+      <div
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col">
+        <div
+          id="detailHeaderBg"
+          class="h-24 bg-gradient-to-r from-brand-600 to-indigo-600 relative p-4 flex justify-end">
+          <button
+            onclick="closeDetailModal()"
+            class="w-8 h-8 rounded-full bg-black/20 text-white hover:bg-black/40 flex items-center justify-center backdrop-blur transition">
+            &times;
+          </button>
+        </div>
+
+        <div class="px-6 pb-6 relative text-xs">
+          <!-- Avatar Floating -->
+          <div class="-mt-12 mb-3 flex justify-between items-end">
+            <img
+              id="detailAvatar"
+              src=""
+              alt="Foto anggota"
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer"
+              class="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md bg-white" />
+            <div class="flex gap-2">
+              <button
+                id="detailEditBtn"
+                onclick=""
+                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition flex items-center gap-1.5">
+                <i class="fa-solid fa-pen-to-square"></i> Edit
+              </button>
+              <button
+                id="detailDeleteBtn"
+                onclick=""
+                class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-medium transition flex items-center gap-1.5">
+                <i class="fa-solid fa-trash"></i> Hapus
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 mb-1">
+            <h3 id="detailName" class="text-lg font-bold text-slate-900"></h3>
+            <span id="detailLifeBadge"></span>
+          </div>
+          <p id="detailSubtitle" class="text-slate-500 mb-4"></p>
+
+          <div
+            class="space-y-2.5 bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Kategori Anggota:</span>
+              <span
+                id="detailCategory"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Generasi:</span>
+              <span id="detailGen" class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Anak ke:</span>
+              <span
+                id="detailChildOrder"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Tahun Lahir / Wafat:</span>
+              <span
+                id="detailYears"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Ayah Kandung:</span>
+              <span
+                id="detailFather"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Ibu Kandung:</span>
+              <span
+                id="detailMother"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Pasangan (Suami/Istri):</span>
+              <span
+                id="detailSpouse"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Ayah Menantu:</span>
+              <span
+                id="detailFatherInLaw"
+                class="font-semibold text-slate-700"></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Ibu Menantu:</span>
+              <span
+                id="detailMotherInLaw"
+                class="font-semibold text-slate-700"></span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <h4 class="font-semibold text-slate-700 mb-1.5">Daftar Anak:</h4>
+            <div id="detailChildrenList" class="flex flex-wrap gap-1.5">
+              <!-- Dynamic Children Tags -->
+            </div>
+          </div>
+
+          <div id="detailNotesContainer" class="hidden">
+            <h4 class="font-semibold text-slate-700 mb-1">Catatan Singkat:</h4>
+            <p
+              id="detailNotes"
+              class="p-3 bg-amber-50/60 rounded-xl border border-amber-100 text-slate-600 text-[11px] leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONFIRM DIALOG -->
+    <div
+      id="confirmModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4">
+      <div
+        class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 text-xs text-slate-700">
+        <div
+          class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-lg mb-3">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 id="confirmTitle" class="font-bold text-sm text-slate-900 mb-1">
+          Konfirmasi Tindakan
+        </h3>
+        <p id="confirmMessage" class="text-slate-500 mb-5">
+          Apakah Anda yakin ingin melanjutkan tindakan ini?
+        </p>
+        <div class="flex justify-end gap-2">
+          <button
+            onclick="closeConfirmModal(false)"
+            class="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50">
+            Batal
+          </button>
+          <button
+            id="confirmSubmitBtn"
+            onclick="closeConfirmModal(true)"
+            class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl">
+            Lanjutkan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUIDE / TATA CARA -->
+    <div
+      id="guideModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] hidden flex justify-center items-center p-3 sm:p-4">
+      <div
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[92vh]">
+        <div
+          class="bg-slate-900 px-5 py-3.5 flex justify-between items-center text-white shrink-0">
+          <h3 class="font-bold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-circle-question text-brand-400"></i> Tata Cara
+            Penggunaan
+          </h3>
+          <button
+            onclick="closeGuideModal()"
+            class="text-slate-400 hover:text-white transition text-xl">
+            &times;
+          </button>
+        </div>
+        <div
+          class="p-4 sm:p-5 overflow-y-auto custom-scrollbar text-xs text-slate-600 space-y-4">
+          <p class="text-slate-700">
+            Sistem ini menyimpan data silsilah di browser Anda (IndexedDB). Data
+            tidak terkirim ke server. Cadangkan file JSON secara berkala agar
+            tidak hilang.
+          </p>
+
+          <section class="space-y-1.5">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-compass text-brand-500"></i> Menu utama
+            </h4>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>
+                <strong>Visual Pohon:</strong> lihat hubungan keluarga, klik
+                orang atau garis untuk menyorot jalur, geser kanvas untuk
+                menggeser tampilan.
+              </li>
+              <li>
+                <strong>Kartu Generasi:</strong> anggota dikelompokkan per
+                generasi.
+              </li>
+              <li>
+                <strong>Daftar Data:</strong> tabel/daftar untuk cari, lihat
+                detail, dan edit anggota.
+              </li>
+              <li>
+                <strong>Tambah Anggota:</strong> isi nama, generasi (1–100),
+                nomor anak ke, orang tua kandung, ayah/ibu menantu, pasangan,
+                dan foto.
+              </li>
+            </ul>
+          </section>
+
+          <section class="space-y-1.5">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-diagram-project text-brand-500"></i> Visual
+              pohon
+            </h4>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>
+                Klik kartu orang untuk mengunci fokus jalur. Klik lagi untuk
+                membuka detail.
+              </li>
+              <li>
+                Garis biru = keturunan ke orang tua, garis kuning putus-putus =
+                pasangan, garis ungu putus-putus = sambungan ke orang tua
+                kandung jika anak sudah menikah ke keluarga lain.
+              </li>
+              <li>
+                Isi <strong>Anak ke</strong> agar saudara kandung tampil urut
+                (anak ke-1, ke-2, dan seterusnya).
+              </li>
+              <li>
+                Isi <strong>Ayah Menantu</strong> dan
+                <strong>Ibu Menantu</strong> agar pasangan tampil di rumah
+                keluarga menantu. Jika kedua pasangan mengisi, kartu berada di
+                tengah kedua keluarga.
+              </li>
+              <li>
+                Zoom dengan tombol + / −, klik persen untuk reset, atau
+                <strong>scroll mouse</strong> di kanvas.
+              </li>
+              <li>
+                Ikon perluas di pojok kanan atas kanvas untuk preview penuh.
+              </li>
+              <li>Unduh PNG atau PDF dari toolbar visual.</li>
+            </ul>
+          </section>
+
+          <section class="space-y-1.5">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-download text-emerald-600"></i> Cara simpan
+              (cadangan)
+            </h4>
+            <ol class="list-decimal pl-5 space-y-1">
+              <li>
+                Buka <strong>Opsi DB</strong> di header (desktop) atau ikon
+                unduh di ponsel.
+              </li>
+              <li>Pilih <strong>Ekspor (JSON + Foto)</strong>.</li>
+              <li>
+                File cadangan JSON akan diunduh. Simpan di folder aman atau
+                cloud.
+              </li>
+            </ol>
+            <p
+              class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-2.5">
+              Penting: data hanya ada di browser ini. Menghapus data situs,
+              ganti perangkat, atau pindah browser membutuhkan file cadangan
+              tersebut.
+            </p>
+          </section>
+
+          <section class="space-y-1.5">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-upload text-brand-600"></i> Cara restore
+              (pulihkan)
+            </h4>
+            <ol class="list-decimal pl-5 space-y-1">
+              <li>
+                Buka <strong>Opsi DB</strong> lalu pilih
+                <strong>Impor Restore (JSON)</strong>, atau ikon unggah di
+                ponsel.
+              </li>
+              <li>Pilih file JSON cadangan yang pernah diunduh.</li>
+              <li>
+                Data lama di browser akan diganti dengan isi file tersebut.
+              </li>
+            </ol>
+          </section>
+
+          <section class="space-y-1.5">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-rotate-left text-rose-500"></i> Reset
+            </h4>
+            <p>
+              Menu <strong>Reset ke Sample Data</strong> menghapus data Anda dan
+              mengembalikan contoh silsilah. Gunakan hanya jika ingin mulai
+              ulang.
+            </p>
+          </section>
+
+          <section
+            class="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
+            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-heart text-emerald-600"></i> Catatan
+            </h4>
+            <p class="text-slate-700">
+              <strong>Donasi pengembangan sistem:</strong> OVO, Dana, ShopeePay
+              <a href="tel:08999686850" class="font-bold text-emerald-700">08999686850</a>
+            </p>
+            <p class="text-slate-700">
+              <strong>Kritik dan saran:</strong>
+              <a href="https://wa.me/628999686850" class="font-bold text-brand-700">08999686850</a>
+              — Bayu Anggara — Sidoarjo, Jawa Timur
+            </p>
+          </section>
+        </div>
+        <div
+          class="px-4 sm:px-5 py-3 border-t border-slate-100 flex justify-end shrink-0">
+          <button
+            onclick="closeGuideModal()"
+            class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs">
+            Mengerti, mulai pakai
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PWA INSTALL BANNER -->
+    <div
+      id="pwaInstallBanner"
+      class="fixed left-3 right-3 sm:left-auto sm:right-5 bottom-[4.75rem] md:bottom-5 z-50 max-w-sm items-center gap-3 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
+      <img
+        src="icons/icon-192.png"
+        alt=""
+        class="h-10 w-10 rounded-xl shrink-0" />
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-bold text-slate-800">Pasang Silsilah</p>
+        <p id="pwaInstallHint" class="text-[10px] text-slate-500 leading-snug">
+          Tambahkan ke layar utama agar bisa dibuka seperti aplikasi, termasuk
+          mode offline.
+        </p>
+      </div>
+      <div class="flex flex-col gap-1 shrink-0">
+        <button
+          id="pwaInstallBtn"
+          type="button"
+          class="px-2.5 py-1 rounded-lg bg-brand-600 text-white text-[10px] font-semibold">
+          Pasang
+        </button>
+        <button
+          id="pwaInstallDismiss"
+          type="button"
+          class="px-2.5 py-1 rounded-lg text-slate-500 text-[10px] font-medium hover:bg-slate-100">
+          Nanti
+        </button>
+      </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div
+      id="toastContainer"
+      class="fixed bottom-[4.75rem] md:bottom-5 right-3 sm:right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+      const DB_NAME = "SilsilahKeluargaDB";
+      const DB_VERSION = 2;
+      const STORE_NAME = "members";
+      let db = null;
+      let currentMembers = [];
+      let currentView = "tree";
+      let confirmResolver = null;
+      let lockedHighlightedMemberId = null; // Locked lineage trace state
+      let currentTreeZoom = 1.0;
+      let treeMemberBranchMap = {};
+      let treeNatalBranchMap = {};
+      const MIN_TREE_ZOOM = 0.4;
+      const MAX_TREE_ZOOM = 2.5;
+      const GUIDE_STORAGE_KEY = "silsilah_guide_seen_v1";
+      const TREE_LAYOUT_KEY = "silsilah_tree_layout_v1";
+      const PWA_INSTALL_DISMISS_KEY = "silsilah_pwa_install_dismissed_v1";
+      let treeLayoutMode = "full";
+      try {
+        const savedLayout = localStorage.getItem(TREE_LAYOUT_KEY);
+        if (savedLayout === "simple" || savedLayout === "full") {
+          treeLayoutMode = savedLayout;
+        }
+      } catch (err) {}
+      const bakedImageCache = new Map();
+      let isTreeFullscreen = false;
+      let deferredPwaPrompt = null;
+
+      function escapeXml(text) {
+        return String(text || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function getShortDisplayName(name) {
+        const parts = String(name || "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!parts.length) return "?";
+        if (parts.length === 1) return parts[0];
+        const rest = parts.slice(1).map((part) => {
+          const letter = part.replace(/[^A-Za-zÀ-ÿ0-9]/g, "");
+          if (!letter) return "";
+          return `${letter[0].toUpperCase()}.`;
+        }).filter(Boolean);
+        return [parts[0], ...rest].join(" ");
+      }
+
+      function isSimpleTreeLayout() {
+        return treeLayoutMode === "simple";
+      }
+
+      function updateTreeLayoutButtons() {
+        const fullBtn = document.getElementById("treeLayoutFullBtn");
+        const simpleBtn = document.getElementById("treeLayoutSimpleBtn");
+        const active =
+          "px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold bg-white shadow text-slate-800";
+        const idle =
+          "px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-semibold text-slate-500 hover:text-slate-800";
+        if (fullBtn) fullBtn.className = isSimpleTreeLayout() ? idle : active;
+        if (simpleBtn) simpleBtn.className = isSimpleTreeLayout() ? active : idle;
+      }
+
+      function setTreeLayoutMode(mode) {
+        treeLayoutMode = mode === "simple" ? "simple" : "full";
+        try {
+          localStorage.setItem(TREE_LAYOUT_KEY, treeLayoutMode);
+        } catch (err) {}
+        updateTreeLayoutButtons();
+        if (currentView === "tree") {
+          renderTreeView();
+        }
+      }
+
+      function getInitials(name) {
+        const parts = String(name || "")
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean);
+        if (!parts.length) return "?";
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+
+      function makeAvatarDataUrl(name, label) {
+        const initials = escapeXml(label || getInitials(name));
+        const seed = String(name || label || "Silsilah");
+        let hash = 0;
+        for (let i = 0; i < seed.length; i += 1) {
+          hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+        }
+        const hue = hash % 360;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="hsl(${hue},42%,38%)"/><text x="64" y="78" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="44" font-weight="700" fill="#ffffff">${initials}</text></svg>`;
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      }
+
+      function getPlaceholderPhoto() {
+        return makeAvatarDataUrl("Foto", "Foto");
+      }
+
+      function getMemberAvatarSrc(member, fallbackName) {
+        if (member && typeof member === "object") {
+          return member.avatarUrl || makeAvatarDataUrl(member.name);
+        }
+        return member || makeAvatarDataUrl(fallbackName);
+      }
+
+      function showToast(message, type = "info") {
+        const container = document.getElementById("toastContainer");
+        if (!container) return;
+
+        const toast = document.createElement("div");
+        toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold text-white shadow-lg flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+
+        let bgClass = "bg-slate-800";
+        let iconClass = "fa-circle-info";
+
+        if (type === "success") {
+          bgClass = "bg-emerald-600";
+          iconClass = "fa-circle-check";
+        } else if (type === "error") {
+          bgClass = "bg-rose-600";
+          iconClass = "fa-circle-xmark";
+        } else if (type === "warning") {
+          bgClass = "bg-amber-600";
+          iconClass = "fa-triangle-exclamation";
+        } else {
+          bgClass = "bg-brand-600";
+          iconClass = "fa-circle-info";
+        }
+
+        toast.classList.add(...bgClass.split(" "));
+        toast.innerHTML = `<i class="fa-solid ${iconClass}"></i> <span>${message}</span>`;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+          toast.classList.remove("translate-y-2", "opacity-0");
+        });
+
+        setTimeout(() => {
+          toast.classList.add("translate-y-2", "opacity-0");
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      function addRelatedPerson(related, id) {
+        if (!id) return;
+        related.add(id);
+        const person = currentMembers.find((m) => m.id === id);
+        if (person?.spouseId) related.add(person.spouseId);
+      }
+
+      function getRelatedMemberIds(targetId) {
+        const related = new Set();
+        const target = currentMembers.find((m) => m.id === targetId);
+        if (!target) return related;
+
+        addRelatedPerson(related, targetId);
+
+        function collectAncestors(id) {
+          const person = currentMembers.find((m) => m.id === id);
+          if (!person) return;
+          if (person.fatherId) {
+            addRelatedPerson(related, person.fatherId);
+            collectAncestors(person.fatherId);
+          }
+          if (person.motherId) {
+            addRelatedPerson(related, person.motherId);
+            collectAncestors(person.motherId);
+          }
+          if (person.fatherInLawId) {
+            addRelatedPerson(related, person.fatherInLawId);
+            collectAncestors(person.fatherInLawId);
+          }
+          if (person.motherInLawId) {
+            addRelatedPerson(related, person.motherInLawId);
+            collectAncestors(person.motherInLawId);
+          }
+        }
+        collectAncestors(targetId);
+
+        function collectDescendants(id) {
+          currentMembers.forEach((m) => {
+            if (m.fatherId === id || m.motherId === id) {
+              addRelatedPerson(related, m.id);
+              collectDescendants(m.id);
+            }
+          });
+        }
+        collectDescendants(targetId);
+
+        return related;
+      }
+
+      function parseLineIds(value) {
+        return (value || "")
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean);
+      }
+
+      function isLineOnActivePath(line, relatedIds) {
+        const spouse1 = line.getAttribute("data-spouse1");
+        const spouse2 = line.getAttribute("data-spouse2");
+        if (spouse1 && spouse2) {
+          return relatedIds.has(spouse1) && relatedIds.has(spouse2);
+        }
+
+        const parents = parseLineIds(
+          line.getAttribute("data-parents") || line.getAttribute("data-parent"),
+        );
+        const children = parseLineIds(
+          line.getAttribute("data-children") || line.getAttribute("data-child"),
+        );
+        if (!parents.length || !children.length) return false;
+
+        const parentOnPath = parents.some((id) => relatedIds.has(id));
+        const childOnPath = children.some((id) => relatedIds.has(id));
+        return parentOnPath && childOnPath;
+      }
+
+      function applyTreeLineHighlight(relatedIds) {
+        const svg = document.getElementById("treeSvgLines");
+        if (!svg) return;
+        const lines = svg.querySelectorAll(
+          "path:not(.tree-line-bg):not(.tree-fence-line)",
+        );
+        const activeLines = [];
+        lines.forEach((line) => {
+          if (isLineOnActivePath(line, relatedIds)) {
+            line.classList.add("tree-line-active");
+            line.classList.remove("tree-line-inactive");
+            activeLines.push(line);
+          } else {
+            line.classList.remove("tree-line-active");
+            line.classList.add("tree-line-inactive");
+          }
+        });
+        activeLines.forEach((line) => svg.appendChild(line));
+      }
+
+      function highlightLineagePath(memberId) {
+        const relatedIds = getRelatedMemberIds(memberId);
+
+        currentMembers.forEach((m) => {
+          const card = document.getElementById(`node-${m.id}`);
+          if (!card) return;
+          if (relatedIds.has(m.id)) {
+            card.classList.add("node-card-active");
+            card.classList.remove("node-card-dimmed");
+            if (m.category !== "bloodline" && m.id !== memberId) {
+              card.classList.add("node-card-active-spouse");
+            } else {
+              card.classList.remove("node-card-active-spouse");
+            }
+          } else {
+            card.classList.remove(
+              "node-card-active",
+              "node-card-active-spouse",
+            );
+            card.classList.add("node-card-dimmed");
+          }
+        });
+
+        drawTreeSvgConnections();
+        applyTreeLineHighlight(relatedIds);
+      }
+
+      function resetLineageHighlight() {
+        if (lockedHighlightedMemberId) {
+          highlightLineagePath(lockedHighlightedMemberId);
+          return;
+        }
+        currentMembers.forEach((m) => {
+          const card = document.getElementById(`node-${m.id}`);
+          if (card) {
+            card.classList.remove(
+              "node-card-active",
+              "node-card-active-spouse",
+              "node-card-dimmed",
+            );
+          }
+        });
+        const svg = document.getElementById("treeSvgLines");
+        if (svg) {
+          const lines = svg.querySelectorAll("path");
+          lines.forEach((line) =>
+            line.classList.remove("tree-line-active", "tree-line-inactive"),
+          );
+        }
+      }
+
+      function lockLineageHighlight(memberId) {
+        lockedHighlightedMemberId = memberId;
+        const person = currentMembers.find((m) => m.id === memberId);
+        const banner = document.getElementById("highlightStatusBanner");
+        const nameSpan = document.getElementById("highlightedPersonName");
+
+        if (person && banner && nameSpan) {
+          nameSpan.textContent = `Fokus: ${person.name}`;
+          banner.classList.remove("hidden");
+          banner.classList.add("flex");
+        }
+        highlightLineagePath(memberId);
+      }
+
+      function clearLineageHighlight() {
+        lockedHighlightedMemberId = null;
+        const banner = document.getElementById("highlightStatusBanner");
+        if (banner) {
+          banner.classList.add("hidden");
+          banner.classList.remove("flex");
+        }
+        resetLineageHighlight();
+      }
+
+      function toggleDbDropdown(e) {
+        if (e) e.stopPropagation();
+        const menu = document.getElementById("dbDropdownMenu");
+        if (menu) menu.classList.toggle("hidden");
+      }
+
+      function openGuideModal() {
+        document.getElementById("guideModal")?.classList.remove("hidden");
+      }
+
+      function closeGuideModal() {
+        document.getElementById("guideModal")?.classList.add("hidden");
+        try {
+          localStorage.setItem(GUIDE_STORAGE_KEY, "1");
+        } catch (e) {}
+      }
+
+      function maybeShowGuideForNewUser() {
+        try {
+          if (!localStorage.getItem(GUIDE_STORAGE_KEY)) {
+            openGuideModal();
+          }
+        } catch (e) {
+          openGuideModal();
+        }
+      }
+
+      function updateFullscreenButton() {
+        const btn = document.getElementById("btnTreeFullscreen");
+        if (!btn) return;
+        btn.title = isTreeFullscreen ? "Keluar preview penuh" : "Preview penuh";
+        btn.innerHTML = isTreeFullscreen
+          ? '<i class="fa-solid fa-compress"></i>'
+          : '<i class="fa-solid fa-expand"></i>';
+      }
+
+      function enterTreeFullscreen() {
+        isTreeFullscreen = true;
+        document.body.classList.add("is-tree-preview");
+        updateFullscreenButton();
+        const section = document.getElementById("treeViewSection");
+        if (section?.requestFullscreen) {
+          section.requestFullscreen().catch(() => {});
+        }
+        requestAnimationFrame(() => drawTreeSvgConnections());
+      }
+
+      function exitTreeFullscreen() {
+        isTreeFullscreen = false;
+        document.body.classList.remove("is-tree-preview");
+        updateFullscreenButton();
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        requestAnimationFrame(() => drawTreeSvgConnections());
+      }
+
+      function toggleTreeFullscreen() {
+        if (isTreeFullscreen) exitTreeFullscreen();
+        else enterTreeFullscreen();
+      }
+
+      document.addEventListener("click", (e) => {
+        const container = document.getElementById("dbDropdownContainer");
+        if (container && !container.contains(e.target)) {
+          closeDbDropdown();
+        }
+
+        // Close searchable select dropdowns when clicking outside
+        ["father", "mother", "spouse"].forEach((type) => {
+          const wrapper = document.getElementById(`${type}SelectWrapper`);
+          if (wrapper && !wrapper.contains(e.target)) {
+            document
+              .getElementById(`${type}SelectDropdown`)
+              ?.classList.add("hidden");
+          }
+        });
+      });
+
+      function zoomInTree() {
+        setTreeZoom(currentTreeZoom + 0.15);
+      }
+
+      function zoomOutTree() {
+        setTreeZoom(currentTreeZoom - 0.15);
+      }
+
+      function resetTreeZoom() {
+        setTreeZoom(1.0);
+      }
+
+      function setTreeZoom(nextZoom, origin = null) {
+        const container = document.getElementById("treeCanvasContainer");
+        const oldZoom = currentTreeZoom;
+        const clamped = Math.min(
+          MAX_TREE_ZOOM,
+          Math.max(MIN_TREE_ZOOM, parseFloat(Number(nextZoom).toFixed(2))),
+        );
+        if (clamped === oldZoom) {
+          applyTreeZoom();
+          return;
+        }
+
+        if (origin && container) {
+          const contentX = (container.scrollLeft + origin.x) / oldZoom;
+          const contentY = (container.scrollTop + origin.y) / oldZoom;
+          currentTreeZoom = clamped;
+          applyTreeZoom();
+          container.scrollLeft = contentX * currentTreeZoom - origin.x;
+          container.scrollTop = contentY * currentTreeZoom - origin.y;
+          return;
+        }
+
+        currentTreeZoom = clamped;
+        applyTreeZoom();
+      }
+
+      function applyTreeZoom() {
+        const wrapper = document.getElementById("treeZoomWrapper");
+        const display = document.getElementById("zoomLevelDisplay");
+        if (wrapper) {
+          wrapper.style.transform = `scale(${currentTreeZoom})`;
+        }
+        if (display) {
+          display.textContent = `${Math.round(currentTreeZoom * 100)}%`;
+        }
+        requestAnimationFrame(() => {
+          drawTreeSvgConnections();
+        });
+      }
+
+      // Initial Sample Data with bloodline/inlaw & alive/deceased status
+      const SAMPLE_MEMBERS = [
+        {
+          id: "mem_1",
+          name: "Raden H. Ahmad",
+          gender: "male",
+          category: "bloodline",
+          isAlive: false,
+          generation: 1,
+          childOrder: null,
+          birthYear: 1945,
+          deathYear: 2018,
+          fatherId: "",
+          motherId: "",
+          spouseId: "mem_2",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+          notes: "Pendiri garis keturunan utama keluarga.",
+        },
+        {
+          id: "mem_2",
+          name: "Hj. Siti Aminah",
+          gender: "female",
+          category: "inlaw",
+          isAlive: true,
+          generation: 1,
+          childOrder: null,
+          birthYear: 1950,
+          deathYear: null,
+          fatherId: "",
+          motherId: "",
+          spouseId: "mem_1",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+          notes: "Ibu tercinta keluarga besar.",
+        },
+        // Additional Generation 1 Root Node to demonstrate Vertical Branch Separation Line ("Pagar Garis Kebawah")
+        {
+          id: "mem_8",
+          name: "H. Moh. Hassan",
+          gender: "male",
+          category: "bloodline",
+          isAlive: false,
+          generation: 1,
+          childOrder: null,
+          birthYear: 1948,
+          deathYear: 2020,
+          fatherId: "",
+          motherId: "",
+          spouseId: "mem_9",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+          notes: "Besan utama (Orang tua dari Ratna Sari).",
+        },
+        {
+          id: "mem_9",
+          name: "Hj. Fatimah",
+          gender: "female",
+          category: "inlaw",
+          isAlive: true,
+          generation: 1,
+          childOrder: null,
+          birthYear: 1952,
+          deathYear: null,
+          fatherId: "",
+          motherId: "",
+          spouseId: "mem_8",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+          notes: "Ibu Ratna Sari.",
+        },
+        {
+          id: "mem_3",
+          name: "Budi Santoso",
+          gender: "male",
+          category: "bloodline",
+          isAlive: true,
+          generation: 2,
+          childOrder: 1,
+          birthYear: 1974,
+          deathYear: null,
+          fatherId: "mem_1",
+          motherId: "mem_2",
+          spouseId: "mem_4",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+          notes: "Anak sulung.",
+        },
+        {
+          id: "mem_4",
+          name: "Ratna Sari",
+          gender: "female",
+          category: "inlaw",
+          isAlive: true,
+          generation: 2,
+          childOrder: 1,
+          birthYear: 1978,
+          deathYear: null,
+          fatherId: "mem_8",
+          motherId: "mem_9",
+          spouseId: "mem_3",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          notes: "Istri Budi Santoso (Menantu).",
+        },
+        {
+          id: "mem_5",
+          name: "Dewi Lestari",
+          gender: "female",
+          category: "bloodline",
+          isAlive: true,
+          generation: 2,
+          childOrder: 2,
+          birthYear: 1980,
+          deathYear: null,
+          fatherId: "mem_1",
+          motherId: "mem_2",
+          spouseId: "",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+          notes: "Anak kedua.",
+        },
+        {
+          id: "mem_6",
+          name: "Rian Santoso",
+          gender: "male",
+          category: "bloodline",
+          isAlive: true,
+          generation: 3,
+          childOrder: 1,
+          birthYear: 2002,
+          deathYear: null,
+          fatherId: "mem_3",
+          motherId: "mem_4",
+          spouseId: "",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80",
+          notes: "Cucu pertama.",
+        },
+        {
+          id: "mem_7",
+          name: "Siti Rahma",
+          gender: "female",
+          category: "bloodline",
+          isAlive: true,
+          generation: 3,
+          childOrder: 2,
+          birthYear: 2006,
+          deathYear: null,
+          fatherId: "mem_3",
+          motherId: "mem_4",
+          spouseId: "",
+          avatarUrl:
+            "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+          notes: "Cucu kedua.",
+        },
+      ];
+
+      function compressAndConvertImage(
+        file,
+        maxWidth = 300,
+        maxHeight = 300,
+        quality = 0.75,
+      ) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > maxWidth) {
+                  height = Math.round((height * maxWidth) / width);
+                  width = maxWidth;
+                }
+              } else {
+                if (height > maxHeight) {
+                  width = Math.round((width * maxHeight) / height);
+                  height = maxHeight;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0, width, height);
+
+              const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+              resolve(compressedDataUrl);
+            };
+            img.onerror = (err) => reject(err);
+          };
+          reader.onerror = (err) => reject(err);
+        });
+      }
+
+      async function handlePhotoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          showToast("Mengompresi foto lokal...", "info");
+          const compressedBase64 = await compressAndConvertImage(file);
+          document.getElementById("formAvatarUrl").value = compressedBase64;
+          document.getElementById("formAvatarPreview").src = compressedBase64;
+          showToast("Foto berhasil dikompresi & terpasang!", "success");
+        } catch (err) {
+          console.error("Gagal kompresi foto:", err);
+          showToast("Gagal memproses gambar lokal", "error");
+        }
+      }
+
+      function initDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (e) => {
+            const dbInstance = e.target.result;
+            if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+              const store = dbInstance.createObjectStore(STORE_NAME, {
+                keyPath: "id",
+              });
+              store.createIndex("generation", "generation", { unique: false });
+              store.createIndex("name", "name", { unique: false });
+            }
+          };
+
+          request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve(db);
+          };
+
+          request.onerror = (e) => {
+            showToast("Gagal membuka database lokal!", "error");
+            reject(e.target.error);
+          };
+        });
+      }
+
+      function getAllMembersFromDB() {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readonly");
+          const store = tx.objectStore(STORE_NAME);
+          const request = store.getAll();
+
+          request.onsuccess = () => resolve(request.result || []);
+        });
+      }
+
+      function saveMemberToDB(member) {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.put(member);
+          tx.oncomplete = () => resolve(true);
+        });
+      }
+
+      function deleteMemberFromDB(id) {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.delete(id);
+          tx.oncomplete = () => resolve(true);
+        });
+      }
+
+      function clearDB() {
+        return new Promise((resolve) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.clear();
+          tx.oncomplete = () => resolve(true);
+        });
+      }
+
+      async function seedInitialDataIfNeeded() {
+        const members = await getAllMembersFromDB();
+        if (members.length === 0) {
+          for (const m of SAMPLE_MEMBERS) {
+            await saveMemberToDB(m);
+          }
+          showToast("Sampel data silsilah berhasil dimuat!", "success");
+        }
+      }
+
+      function parsePositiveInt(value) {
+        const n = parseInt(value, 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      }
+
+      function getDisplayChildOrder(m) {
+        if (m?.category !== "bloodline" && m?.spouseId) {
+          const spouse = currentMembers.find((s) => s.id === m.spouseId);
+          const spouseOrder = parsePositiveInt(spouse?.childOrder);
+          if (spouseOrder) return spouseOrder;
+        }
+        return parsePositiveInt(m?.childOrder) || 9999;
+      }
+
+      function compareMembersForDisplay(a, b) {
+        const ga = parseInt(a.generation, 10) || 1;
+        const gb = parseInt(b.generation, 10) || 1;
+        if (ga !== gb) return ga - gb;
+        const ao = getDisplayChildOrder(a);
+        const bo = getDisplayChildOrder(b);
+        if (ao !== bo) return ao - bo;
+        const ay = parseInt(a.birthYear, 10) || 0;
+        const by = parseInt(b.birthYear, 10) || 0;
+        if (ay !== by) return ay - by;
+        return String(a.name || "").localeCompare(String(b.name || ""), "id");
+      }
+
+      function compareSiblings(a, b) {
+        const ao = parsePositiveInt(a.childOrder);
+        const bo = parsePositiveInt(b.childOrder);
+        if (ao && bo && ao !== bo) return ao - bo;
+        if (ao && !bo) return -1;
+        if (!ao && bo) return 1;
+        const ay = parseInt(a.birthYear, 10) || 0;
+        const by = parseInt(b.birthYear, 10) || 0;
+        if (ay !== by) return ay - by;
+        return String(a.name || "").localeCompare(String(b.name || ""), "id");
+      }
+
+      async function loadAndRenderData() {
+        currentMembers = await getAllMembersFromDB();
+
+        currentMembers.sort(compareMembersForDisplay);
+
+        // Update Statistics
+        document.getElementById("statTotalMembers").textContent =
+          currentMembers.length;
+        const maxGen = currentMembers.reduce(
+          (max, m) => Math.max(max, parseInt(m.generation) || 1),
+          0,
+        );
+        document.getElementById("statTotalGenerations").textContent = maxGen;
+
+        // Render Active View
+        if (currentView === "tree") {
+          renderTreeView();
+        } else if (currentView === "cards") {
+          renderGenerationalCardsView();
+        } else if (currentView === "list") {
+          renderListView();
+        }
+      }
+
+      function renderGenerationalCardsView() {
+        const container = document.getElementById("generationalCardsContainer");
+        if (!container) return;
+        container.innerHTML = "";
+
+        const genMap = {};
+        currentMembers.forEach((m) => {
+          const g = m.generation || 1;
+          if (!genMap[g]) genMap[g] = [];
+          genMap[g].push(m);
+        });
+
+        const sortedGens = Object.keys(genMap).sort(
+          (a, b) => parseInt(a) - parseInt(b),
+        );
+
+        if (sortedGens.length === 0) {
+          container.innerHTML =
+            '<div class="text-center py-12 text-slate-400 text-xs">Belum ada data anggota keluarga.</div>';
+          return;
+        }
+
+        sortedGens.forEach((g) => {
+          const section = document.createElement("div");
+          section.className =
+            "bg-white p-3 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80 space-y-3 sm:space-y-4";
+
+          section.innerHTML = `
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                        <span class="w-8 h-8 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-xs border border-brand-200/60">${g}</span>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">Generasi ${g}</h3>
+                            <p class="text-[10px] text-slate-400">${genMap[g].length} Anggota Keluarga</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3" id="gen-cards-grid-${g}"></div>
+                `;
+
+          container.appendChild(section);
+          const grid = document.getElementById(`gen-cards-grid-${g}`);
+
+          genMap[g].sort(compareMembersForDisplay);
+          genMap[g].forEach((m) => {
+            const card = createNodeCardHTML(m, false, { fluid: true });
+            grid.appendChild(card);
+          });
+        });
+      }
+
+      function renderListView() {
+        const tbody = document.getElementById("memberTableBody");
+        const mobileList = document.getElementById("memberMobileList");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+        if (mobileList) mobileList.innerHTML = "";
+
+        if (currentMembers.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Belum ada data anggota keluarga.</td></tr>`;
+          if (mobileList) {
+            mobileList.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Belum ada data anggota keluarga.</div>`;
+          }
+          return;
+        }
+
+        currentMembers.forEach((m) => {
+          const father =
+            currentMembers.find((f) => f.id === m.fatherId)?.name || "-";
+          const mother =
+            currentMembers.find((f) => f.id === m.motherId)?.name || "-";
+          const fatherInLaw =
+            currentMembers.find((f) => f.id === m.fatherInLawId)?.name || "-";
+          const motherInLaw =
+            currentMembers.find((f) => f.id === m.motherInLawId)?.name || "-";
+          const spouse =
+            currentMembers.find((f) => f.id === m.spouseId)?.name || "-";
+          const isAlive = m.isAlive !== false;
+          const avatar = getMemberAvatarSrc(m);
+          const categoryLabel =
+            m.category === "bloodline" ? "Garis Kandung" : "Pasangan";
+          const categoryClass =
+            m.category === "bloodline"
+              ? "bg-blue-50 text-blue-700"
+              : "bg-amber-50 text-amber-700";
+          const statusLabel = isAlive ? "Hidup" : "Wafat";
+          const statusClass = isAlive
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-slate-100 text-slate-600";
+          const yearText = m.birthYear ? `(${m.birthYear})` : "";
+
+          const tr = document.createElement("tr");
+          tr.className =
+            "hover:bg-slate-50 transition border-b border-slate-100";
+          tr.innerHTML = `
+                    <td class="px-4 py-3 flex items-center gap-2.5">
+                        <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-8 h-8 rounded-lg object-cover border border-slate-200">
+                        <div>
+                            <div class="font-bold text-slate-800">${m.name}</div>
+                            <div class="text-[10px] text-slate-400">${m.gender === "male" ? "Laki-Laki" : "Perempuan"}</div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${categoryClass}">
+                            ${m.category === "bloodline" ? "Garis Kandung" : "Pasangan/Menantu"}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 font-medium">Gen ${m.generation || 1}${parsePositiveInt(m.childOrder) ? " · Anak ke-" + parsePositiveInt(m.childOrder) : ""}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-medium ${statusClass}">
+                            ${statusLabel}
+                        </span>
+                        <span class="text-slate-400 text-[10px] ml-1">${m.birthYear ? "(" + m.birthYear + ")" : ""}</span>
+                    </td>
+                    <td class="px-4 py-3 text-slate-500">
+                        <div>Ortu: ${father} / ${mother}</div>
+                        <div>Menantu: ${fatherInLaw} / ${motherInLaw}</div>
+                        <div>Pasangan: ${spouse}</div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="openDetailModal('${m.id}')" class="px-2.5 py-1 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-medium mr-1">Detail</button>
+                        <button onclick="openMemberModal('${m.id}')" class="px-2.5 py-1 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-lg text-xs font-semibold mr-1">Edit</button>
+                    </td>
+                `;
+          tbody.appendChild(tr);
+
+          if (mobileList) {
+            const item = document.createElement("div");
+            item.className =
+              "w-full rounded-xl border border-slate-200 bg-white p-3";
+            item.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <h4 class="font-bold text-slate-800 text-xs truncate">${m.name}</h4>
+                                        <p class="text-[10px] text-slate-400">${m.gender === "male" ? "Laki-laki" : "Perempuan"} · Gen ${m.generation || 1}${parsePositiveInt(m.childOrder) ? " · Anak ke-" + parsePositiveInt(m.childOrder) : ""}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${categoryClass}">${categoryLabel}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${statusClass}">${statusLabel} ${yearText}</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-1.5 leading-snug break-words">Ortu: ${father} / ${mother}</p>
+                                <p class="text-[10px] text-slate-500 break-words">Menantu: ${fatherInLaw} / ${motherInLaw}</p>
+                                <p class="text-[10px] text-slate-500 break-words">Pasangan: ${spouse}</p>
+                                <div class="flex items-center gap-1.5 mt-2">
+                                    <button onclick="openDetailModal('${m.id}')" class="flex-1 px-2 py-1.5 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg text-[11px] font-medium">Detail</button>
+                                    <button onclick="openMemberModal('${m.id}')" class="flex-1 px-2 py-1.5 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-lg text-[11px] font-semibold">Edit</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            mobileList.appendChild(item);
+          }
+        });
+      }
+
+      function handleSearch() {
+        const query =
+          document.getElementById("searchInput")?.value.toLowerCase().trim() ||
+          "";
+        if (!query) {
+          resetLineageHighlight();
+          return;
+        }
+
+        currentMembers.forEach((m) => {
+          const card = document.getElementById(`node-${m.id}`);
+          if (!card) return;
+          const match =
+            m.name.toLowerCase().includes(query) ||
+            (m.notes && m.notes.toLowerCase().includes(query));
+          if (match) {
+            card.classList.add("node-card-active");
+            card.classList.remove("node-card-dimmed");
+          } else {
+            card.classList.remove("node-card-active");
+            card.classList.add("node-card-dimmed");
+          }
+        });
+      }
+
+      function openMemberModal(memberId = null) {
+        const modal = document.getElementById("memberModal");
+        const form = document.getElementById("memberForm");
+        if (!modal || !form) return;
+
+        form.reset();
+        populateSearchSelectOptions();
+
+        if (memberId) {
+          const m = currentMembers.find((item) => item.id === memberId);
+          if (m) {
+            document.getElementById("modalTitle").innerHTML =
+              '<i class="fa-solid fa-pen-to-square text-brand-400"></i> Edit Anggota Keluarga';
+            document.getElementById("formMemberId").value = m.id;
+            document.getElementById("formName").value = m.name;
+            document.getElementById("formGender").value = m.gender || "male";
+            document.getElementById("formCategory").value =
+              m.category || "bloodline";
+            document.getElementById("formGeneration").value = m.generation || 1;
+            document.getElementById("formChildOrder").value =
+              parsePositiveInt(m.childOrder) || "";
+            document.getElementById("formLifeStatus").value =
+              m.isAlive !== false ? "alive" : "deceased";
+            document.getElementById("formBirthYear").value = m.birthYear || "";
+            document.getElementById("formDeathYear").value = m.deathYear || "";
+            document.getElementById("formNotes").value = m.notes || "";
+            document.getElementById("formAvatarUrl").value = m.avatarUrl || "";
+            document.getElementById("formAvatarPreview").src =
+              getMemberAvatarSrc(m);
+
+            selectSearchOption(
+              "father",
+              m.fatherId,
+              currentMembers.find((x) => x.id === m.fatherId)?.name,
+            );
+            selectSearchOption(
+              "mother",
+              m.motherId,
+              currentMembers.find((x) => x.id === m.motherId)?.name,
+            );
+            selectSearchOption(
+              "spouse",
+              m.spouseId,
+              currentMembers.find((x) => x.id === m.spouseId)?.name,
+            );
+            selectSearchOption(
+              "fatherInLaw",
+              m.fatherInLawId,
+              currentMembers.find((x) => x.id === m.fatherInLawId)?.name,
+            );
+            selectSearchOption(
+              "motherInLaw",
+              m.motherInLawId,
+              currentMembers.find((x) => x.id === m.motherInLawId)?.name,
+            );
+          }
+        } else {
+          document.getElementById("modalTitle").innerHTML =
+            '<i class="fa-solid fa-user-plus text-brand-400"></i> Tambah Anggota Keluarga';
+          document.getElementById("formMemberId").value = "";
+          document.getElementById("formAvatarPreview").src =
+            getPlaceholderPhoto();
+          selectSearchOption("father", "", "");
+          selectSearchOption("mother", "", "");
+          selectSearchOption("spouse", "", "");
+          selectSearchOption("fatherInLaw", "", "");
+          selectSearchOption("motherInLaw", "", "");
+        }
+
+        toggleDeathYearInput();
+        modal.classList.remove("hidden");
+      }
+
+      function closeMemberModal() {
+        document.getElementById("memberModal")?.classList.add("hidden");
+      }
+
+      function toggleDeathYearInput() {
+        const status = document.getElementById("formLifeStatus")?.value;
+        const container = document.getElementById("deathYearContainer");
+        if (container) {
+          container.classList.toggle("hidden", status !== "deceased");
+        }
+      }
+
+      function populateSearchSelectOptions() {
+        ["father", "mother", "spouse", "fatherInLaw", "motherInLaw"].forEach(
+          (type) => {
+          const list = document.getElementById(`${type}OptionsList`);
+          if (!list) return;
+          list.innerHTML = "";
+
+          const noneOpt = document.createElement("div");
+          noneOpt.className =
+            "px-3 py-1.5 hover:bg-slate-100 rounded-lg cursor-pointer text-slate-500 font-medium";
+          noneOpt.textContent = "-- Tidak Ada / Kosong --";
+          noneOpt.onclick = () =>
+            selectSearchOption(type, "", "-- Tidak Ada / Kosong --");
+          list.appendChild(noneOpt);
+
+          currentMembers.forEach((m) => {
+            if (
+              (type === "father" || type === "fatherInLaw") &&
+              m.gender !== "male"
+            )
+              return;
+            if (
+              (type === "mother" || type === "motherInLaw") &&
+              m.gender !== "female"
+            )
+              return;
+
+            const opt = document.createElement("div");
+            opt.className =
+              "px-3 py-1.5 hover:bg-brand-50 hover:text-brand-700 rounded-lg cursor-pointer flex justify-between items-center";
+            opt.innerHTML = `<span>${m.name}</span> <span class="text-[10px] text-slate-400">Gen ${m.generation}</span>`;
+            opt.onclick = () => selectSearchOption(type, m.id, m.name);
+            list.appendChild(opt);
+          });
+        },
+        );
+      }
+
+      function toggleSearchSelect(type) {
+        const dropdown = document.getElementById(`${type}SelectDropdown`);
+        dropdown?.classList.toggle("hidden");
+      }
+
+      function filterSearchSelect(type) {
+        const input = document
+          .getElementById(`${type}SearchInput`)
+          ?.value.toLowerCase();
+        const list = document.getElementById(`${type}OptionsList`);
+        if (!list) return;
+        const items = list.querySelectorAll("div");
+        items.forEach((item) => {
+          const text = item.textContent.toLowerCase();
+          item.style.display = text.includes(input) ? "" : "none";
+        });
+      }
+
+      function selectSearchOption(type, id, name) {
+        document.getElementById(
+          `form${type.charAt(0).toUpperCase() + type.slice(1)}Id`,
+        ).value = id || "";
+        document.getElementById(`${type}SelectText`).textContent =
+          name || "-- Tidak Ada / Akar --";
+        document
+          .getElementById(`${type}SelectDropdown`)
+          ?.classList.add("hidden");
+      }
+
+      async function saveMemberForm(e) {
+        e.preventDefault();
+        const id =
+          document.getElementById("formMemberId").value || "mem_" + Date.now();
+        const newMember = {
+          id,
+          name: document.getElementById("formName").value.trim(),
+          gender: document.getElementById("formGender").value,
+          category: document.getElementById("formCategory").value,
+          generation: Math.min(
+            100,
+            Math.max(
+              1,
+              parseInt(document.getElementById("formGeneration").value, 10) ||
+                1,
+            ),
+          ),
+          childOrder:
+            parsePositiveInt(
+              document.getElementById("formChildOrder").value,
+            ) || null,
+          isAlive: document.getElementById("formLifeStatus").value === "alive",
+          birthYear:
+            parseInt(document.getElementById("formBirthYear").value) || null,
+          deathYear:
+            parseInt(document.getElementById("formDeathYear").value) || null,
+          fatherId: document.getElementById("formFatherId").value || "",
+          motherId: document.getElementById("formMotherId").value || "",
+          spouseId: document.getElementById("formSpouseId").value || "",
+          fatherInLawId:
+            document.getElementById("formFatherInLawId").value || "",
+          motherInLawId:
+            document.getElementById("formMotherInLawId").value || "",
+          avatarUrl: document.getElementById("formAvatarUrl").value || "",
+          notes: document.getElementById("formNotes").value.trim(),
+        };
+
+        await saveMemberToDB(newMember);
+
+        // Sync reciprocal spouse relationship
+        if (newMember.spouseId) {
+          const spouse = currentMembers.find(
+            (s) => s.id === newMember.spouseId,
+          );
+          if (spouse && spouse.spouseId !== id) {
+            spouse.spouseId = id;
+            await saveMemberToDB(spouse);
+          }
+        }
+
+        closeMemberModal();
+        showToast("Data anggota berhasil disimpan!", "success");
+        await loadAndRenderData();
+      }
+
+      function openDetailModal(id) {
+        const m = currentMembers.find((item) => item.id === id);
+        if (!m) return;
+
+        document.getElementById("detailAvatar").src = getMemberAvatarSrc(m);
+        document.getElementById("detailName").textContent = m.name;
+        document.getElementById("detailSubtitle").textContent =
+          `${m.gender === "male" ? "Laki-Laki" : "Perempuan"} • Generasi ${m.generation}`;
+
+        const lifeBadge = document.getElementById("detailLifeBadge");
+        lifeBadge.className =
+          m.isAlive !== false
+            ? "px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-100 text-emerald-700"
+            : "px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-200 text-slate-700";
+        lifeBadge.textContent =
+          m.isAlive !== false ? "🟢 Masih Hidup" : "🕊️ Wafat";
+
+        document.getElementById("detailCategory").textContent =
+          m.category === "bloodline"
+            ? "Garis Keturunan Kandung"
+            : "Pasangan / Menantu";
+        document.getElementById("detailGen").textContent =
+          `Generasi Ke-${m.generation}`;
+        document.getElementById("detailChildOrder").textContent =
+          parsePositiveInt(m.childOrder)
+            ? `Anak ke-${parsePositiveInt(m.childOrder)}`
+            : "-";
+        document.getElementById("detailYears").textContent =
+          `${m.birthYear || "?"} - ${m.isAlive === false ? m.deathYear || "?" : "Sekarang"}`;
+
+        document.getElementById("detailFather").textContent =
+          currentMembers.find((x) => x.id === m.fatherId)?.name || "-";
+        document.getElementById("detailMother").textContent =
+          currentMembers.find((x) => x.id === m.motherId)?.name || "-";
+        document.getElementById("detailSpouse").textContent =
+          currentMembers.find((x) => x.id === m.spouseId)?.name || "-";
+        document.getElementById("detailFatherInLaw").textContent =
+          currentMembers.find((x) => x.id === m.fatherInLawId)?.name || "-";
+        document.getElementById("detailMotherInLaw").textContent =
+          currentMembers.find((x) => x.id === m.motherInLawId)?.name || "-";
+
+        // Children list
+        const children = currentMembers
+          .filter((c) => c.fatherId === m.id || c.motherId === m.id)
+          .sort(compareSiblings);
+        const childrenContainer = document.getElementById("detailChildrenList");
+        childrenContainer.innerHTML =
+          children.length > 0
+            ? children
+                .map((c) => {
+                  const order = parsePositiveInt(c.childOrder);
+                  const label = order ? `${c.name} (ke-${order})` : c.name;
+                  return `<span class="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg font-medium text-slate-700">${label}</span>`;
+                })
+                .join("")
+            : '<span class="text-slate-400">Belum ada data anak.</span>';
+
+        const notesContainer = document.getElementById("detailNotesContainer");
+        if (m.notes) {
+          document.getElementById("detailNotes").textContent = m.notes;
+          notesContainer.classList.remove("hidden");
+        } else {
+          notesContainer.classList.add("hidden");
+        }
+
+        document.getElementById("detailEditBtn").onclick = () => {
+          closeDetailModal();
+          openMemberModal(m.id);
+        };
+        document.getElementById("detailDeleteBtn").onclick = () => {
+          confirmDeleteMember(m.id);
+        };
+
+        document.getElementById("detailModal").classList.remove("hidden");
+      }
+
+      function closeDetailModal() {
+        document.getElementById("detailModal")?.classList.add("hidden");
+      }
+
+      function confirmDeleteMember(id) {
+        const m = currentMembers.find((x) => x.id === id);
+        if (!m) return;
+
+        document.getElementById("confirmTitle").textContent = "Hapus Anggota";
+        document.getElementById("confirmMessage").textContent =
+          `Apakah Anda yakin ingin menghapus '${m.name}' dari silsilah keluarga?`;
+        document.getElementById("confirmModal").classList.remove("hidden");
+
+        confirmResolver = async (confirmed) => {
+          if (confirmed) {
+            await deleteMemberFromDB(id);
+            closeDetailModal();
+            showToast("Anggota berhasil dihapus!", "success");
+            await loadAndRenderData();
+          }
+        };
+      }
+
+      async function confirmResetDB() {
+        document.getElementById("confirmTitle").textContent =
+          "Reset ke Sampel Data";
+        document.getElementById("confirmMessage").textContent =
+          "Semua data lokal saat ini akan diganti dengan sampel awal. Lanjutkan?";
+        document.getElementById("confirmModal").classList.remove("hidden");
+
+        confirmResolver = async (confirmed) => {
+          if (confirmed) {
+            await clearDB();
+            await seedInitialDataIfNeeded();
+            showToast("Database berhasil di-reset ke sampel!", "success");
+            await loadAndRenderData();
+          }
+        };
+      }
+
+      function closeConfirmModal(result) {
+        document.getElementById("confirmModal")?.classList.add("hidden");
+        if (confirmResolver) {
+          confirmResolver(result);
+          confirmResolver = null;
+        }
+      }
+
+      async function exportJSON() {
+        const data = await getAllMembersFromDB();
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Silsilah_Keluarga_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Backup JSON berhasil diunduh!", "success");
+      }
+
+      async function importJSON(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (Array.isArray(data)) {
+              await clearDB();
+              for (const m of data) {
+                await saveMemberToDB(m);
+              }
+              showToast("Restore data JSON berhasil!", "success");
+              await loadAndRenderData();
+            } else {
+              showToast("Format file JSON tidak valid!", "error");
+            }
+          } catch (err) {
+            showToast("Gagal membaca file JSON!", "error");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      function loadHtmlImage(src, useCors) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          if (useCors && src && !src.startsWith("data:") && !src.startsWith("blob:")) {
+            img.crossOrigin = "anonymous";
+            img.referrerPolicy = "no-referrer";
+          }
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("gagal memuat gambar"));
+          img.src = src;
+        });
+      }
+
+      async function loadImageSafe(src) {
+        if (!src) throw new Error("sumber gambar kosong");
+        if (src.startsWith("data:") || src.startsWith("blob:")) {
+          return loadHtmlImage(src, false);
+        }
+        try {
+          return await loadHtmlImage(src, true);
+        } catch (err) {
+          const res = await fetch(src, { mode: "cors", credentials: "omit" });
+          if (!res.ok) throw err;
+          const dataUrl = await blobToDataUrl(await res.blob());
+          return loadHtmlImage(dataUrl, false);
+        }
+      }
+
+      function drawCoverImage(ctx, image, width, height) {
+        ctx.fillStyle = "#e2e8f0";
+        ctx.fillRect(0, 0, width, height);
+        const ir = (image.naturalWidth || image.width) / (image.naturalHeight || image.height || 1);
+        const cr = width / height;
+        let dw;
+        let dh;
+        let dx;
+        let dy;
+        if (ir > cr) {
+          dh = height;
+          dw = dh * ir;
+          dx = (width - dw) / 2;
+          dy = 0;
+        } else {
+          dw = width;
+          dh = dw / ir;
+          dx = 0;
+          dy = (height - dh) / 2;
+        }
+        ctx.drawImage(image, dx, dy, dw, dh);
+      }
+
+      async function rasterizeSrcToDataUrl(src, width = 256, height = 256) {
+        const cacheKey = `${src}|${width}x${height}`;
+        if (bakedImageCache.has(cacheKey)) return bakedImageCache.get(cacheKey);
+
+        let image;
+        try {
+          image = await loadImageSafe(src);
+        } catch (err) {
+          image = await loadHtmlImage(getPlaceholderPhoto(), false);
+        }
+
+        const canvas = document.createElement("canvas");
+        const scale = 2;
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        const ctx = canvas.getContext("2d");
+        drawCoverImage(ctx, image, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+        bakedImageCache.set(cacheKey, dataUrl);
+        return dataUrl;
+      }
+
+      async function bakeImagesForCapture(root) {
+        const imgs = Array.from(root.querySelectorAll("img"));
+        const originals = imgs.map((img) => ({
+          img,
+          src: img.getAttribute("src"),
+          srcset: img.getAttribute("srcset"),
+          onerror: img.getAttribute("onerror"),
+        }));
+
+        await Promise.all(
+          imgs.map(async (img) => {
+            const src = img.currentSrc || img.getAttribute("src") || "";
+            if (!src) return;
+            const width = Math.max(img.offsetWidth || img.naturalWidth || 44, 32);
+            const height = Math.max(
+              img.offsetHeight || img.naturalHeight || 44,
+              32,
+            );
+            const dataUrl = await rasterizeSrcToDataUrl(src, width, height);
+            img.removeAttribute("srcset");
+            img.removeAttribute("onerror");
+            img.crossOrigin = "anonymous";
+            img.referrerPolicy = "no-referrer";
+            img.src = dataUrl;
+            img.style.objectFit = "cover";
+            if (img.decode) {
+              await img.decode().catch(() => {});
+            }
+          }),
+        );
+
+        return () => {
+          originals.forEach(({ img, src, srcset, onerror }) => {
+            if (src != null) img.setAttribute("src", src);
+            else img.removeAttribute("src");
+            if (srcset != null) img.setAttribute("srcset", srcset);
+            else img.removeAttribute("srcset");
+            if (onerror != null) img.setAttribute("onerror", onerror);
+            else img.removeAttribute("onerror");
+          });
+        };
+      }
+
+      async function captureTreeCanvas() {
+        const wrapper = document.getElementById("treeZoomWrapper");
+        if (!wrapper) throw new Error("Pohon silsilah tidak ditemukan");
+        if (typeof html2canvas !== "function") {
+          throw new Error("Pustaka html2canvas belum siap");
+        }
+
+        const prevTransform = wrapper.style.transform;
+        const prevTransition = wrapper.style.transition;
+        wrapper.style.transition = "none";
+        wrapper.style.transform = "none";
+        drawTreeSvgConnections();
+        let restoreImages = () => {};
+
+        try {
+          restoreImages = await bakeImagesForCapture(wrapper);
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready.catch(() => {});
+          }
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+
+          return await html2canvas(wrapper, {
+            scale: Math.min(2, window.devicePixelRatio > 1 ? 2 : 1.5),
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: "#ffffff",
+            logging: false,
+            imageTimeout: 20000,
+            foreignObjectRendering: false,
+            onclone: (clonedDoc) => {
+              const cloned = clonedDoc.getElementById("treeZoomWrapper");
+              if (!cloned) return;
+              cloned.style.transform = "none";
+              cloned.style.transition = "none";
+              cloned.querySelectorAll("img").forEach((img) => {
+                img.style.objectFit = "cover";
+                img.crossOrigin = "anonymous";
+              });
+            },
+          });
+        } finally {
+          restoreImages();
+          wrapper.style.transform =
+            prevTransform || `scale(${currentTreeZoom})`;
+          wrapper.style.transition = prevTransition;
+          requestAnimationFrame(() => drawTreeSvgConnections());
+        }
+      }
+
+      function triggerBlobDownload(dataUrl, filename) {
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
+      }
+
+      async function downloadTreeAsImage() {
+        try {
+          showToast("Memproses gambar PNG beserta foto...", "info");
+          const canvas = await captureTreeCanvas();
+          triggerBlobDownload(
+            canvas.toDataURL("image/png"),
+            `Silsilah_Pohon_${new Date().toISOString().slice(0, 10)}.png`,
+          );
+          showToast("Gambar PNG berhasil diunduh!", "success");
+        } catch (err) {
+          console.error(err);
+          showToast("Gagal mengunduh gambar PNG", "error");
+        }
+      }
+
+      async function downloadTreeAsPDF() {
+        if (!window.jspdf) {
+          showToast("Pustaka PDF belum siap", "error");
+          return;
+        }
+        try {
+          showToast("Memproses file PDF beserta foto...", "info");
+          const canvas = await captureTreeCanvas();
+          const imgData = canvas.toDataURL("image/jpeg", 0.92);
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation:
+              canvas.width > canvas.height ? "landscape" : "portrait",
+            unit: "px",
+            format: [canvas.width, canvas.height],
+            hotfixes: ["px_scaling"],
+          });
+          pdf.addImage(
+            imgData,
+            "JPEG",
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+            undefined,
+            "FAST",
+          );
+          pdf.save(
+            `Silsilah_Pohon_${new Date().toISOString().slice(0, 10)}.pdf`,
+          );
+          showToast("PDF berhasil diunduh!", "success");
+        } catch (err) {
+          console.error(err);
+          showToast("Gagal mengunduh PDF", "error");
+        }
+      }
+
+      function sameTreeSlot(a, b) {
+        return Math.abs(Number(a) - Number(b)) < 0.001;
+      }
+
+      function getNatalBranchIndex(person) {
+        if (!person) return null;
+        if (person.motherId && treeNatalBranchMap[person.motherId] !== undefined) {
+          return treeNatalBranchMap[person.motherId];
+        }
+        if (person.fatherId && treeNatalBranchMap[person.fatherId] !== undefined) {
+          return treeNatalBranchMap[person.fatherId];
+        }
+        return treeNatalBranchMap[person.id];
+      }
+
+      function hasInLawParents(person) {
+        return !!(person?.fatherInLawId || person?.motherInLawId);
+      }
+
+      function getInLawHomeBranch(person) {
+        if (!person) return null;
+        if (
+          person.fatherInLawId &&
+          treeNatalBranchMap[person.fatherInLawId] !== undefined
+        ) {
+          return treeNatalBranchMap[person.fatherInLawId];
+        }
+        if (
+          person.motherInLawId &&
+          treeNatalBranchMap[person.motherInLawId] !== undefined
+        ) {
+          return treeNatalBranchMap[person.motherInLawId];
+        }
+        return null;
+      }
+
+      function getCoupleHomeSlot(member, spouse) {
+        const natalA = treeNatalBranchMap[member.id];
+        if (!spouse) return natalA ?? 0;
+
+        const natalB = treeNatalBranchMap[spouse.id];
+        const aHas = hasInLawParents(member);
+        const bHas = hasInLawParents(spouse);
+        const inLawA = getInLawHomeBranch(member);
+        const inLawB = getInLawHomeBranch(spouse);
+
+        if (aHas && bHas) {
+          const left = Math.min(
+            natalA ?? inLawB ?? 0,
+            natalB ?? inLawA ?? 0,
+          );
+          const right = Math.max(
+            natalA ?? inLawB ?? 0,
+            natalB ?? inLawA ?? 0,
+          );
+          if (left !== right) return (left + right) / 2;
+          return left;
+        }
+        if (aHas && inLawA != null) return inLawA;
+        if (bHas && inLawB != null) return inLawB;
+
+        if (member.category !== "bloodline" && natalB !== undefined) {
+          return natalB;
+        }
+        if (spouse.category !== "bloodline" && natalA !== undefined) {
+          return natalA;
+        }
+        return natalA ?? natalB ?? 0;
+      }
+
+      function assignNatalAndDisplaySlots(rootClusters) {
+        treeNatalBranchMap = {};
+        rootClusters.forEach((cluster, bIndex) => {
+          cluster.forEach((m) => {
+            treeNatalBranchMap[m.id] = bIndex;
+          });
+        });
+
+        let changed = true;
+        let loopGuard = 0;
+        while (changed && loopGuard < 120) {
+          changed = false;
+          loopGuard++;
+          currentMembers.forEach((m) => {
+            if (treeNatalBranchMap[m.id] !== undefined) return;
+            if (m.fatherId && treeNatalBranchMap[m.fatherId] !== undefined) {
+              treeNatalBranchMap[m.id] = treeNatalBranchMap[m.fatherId];
+              changed = true;
+              return;
+            }
+            if (m.motherId && treeNatalBranchMap[m.motherId] !== undefined) {
+              treeNatalBranchMap[m.id] = treeNatalBranchMap[m.motherId];
+              changed = true;
+            }
+          });
+        }
+        currentMembers.forEach((m) => {
+          if (treeNatalBranchMap[m.id] === undefined) {
+            treeNatalBranchMap[m.id] = 0;
+          }
+        });
+
+        treeMemberBranchMap = {};
+        currentMembers.forEach((m) => {
+          treeMemberBranchMap[m.id] = treeNatalBranchMap[m.id];
+        });
+
+        const seenCouple = new Set();
+        currentMembers.forEach((m) => {
+          if (seenCouple.has(m.id) || !m.spouseId) return;
+          const spouse = currentMembers.find((s) => s.id === m.spouseId);
+          if (!spouse) return;
+          seenCouple.add(m.id);
+          seenCouple.add(spouse.id);
+          const slot = getCoupleHomeSlot(m, spouse);
+          treeMemberBranchMap[m.id] = slot;
+          treeMemberBranchMap[spouse.id] = slot;
+        });
+
+        changed = true;
+        loopGuard = 0;
+        while (changed && loopGuard < 120) {
+          changed = false;
+          loopGuard++;
+          currentMembers.forEach((m) => {
+            if (m.spouseId) return;
+            const parentSlot =
+              (m.fatherId && treeMemberBranchMap[m.fatherId] !== undefined
+                ? treeMemberBranchMap[m.fatherId]
+                : undefined) ??
+              (m.motherId && treeMemberBranchMap[m.motherId] !== undefined
+                ? treeMemberBranchMap[m.motherId]
+                : undefined);
+            if (
+              parentSlot !== undefined &&
+              !sameTreeSlot(treeMemberBranchMap[m.id], parentSlot)
+            ) {
+              treeMemberBranchMap[m.id] = parentSlot;
+              changed = true;
+            }
+          });
+        }
+      }
+
+      function isMarriedIntoOtherFamily(child) {
+        if (!child) return false;
+        const natal = treeNatalBranchMap[child.id];
+        const home = treeMemberBranchMap[child.id];
+        if (natal == null || home == null) return false;
+        return !sameTreeSlot(natal, home);
+      }
+      function getCoupleDisplayOrder(member, spouse) {
+        if (!spouse) return { left: member, right: null };
+        const memberNatal = getNatalBranchIndex(member);
+        const spouseNatal = getNatalBranchIndex(spouse);
+        if (
+          memberNatal != null &&
+          spouseNatal != null &&
+          memberNatal !== spouseNatal
+        ) {
+          if (spouseNatal < memberNatal) return { left: spouse, right: member };
+          if (memberNatal < spouseNatal) return { left: member, right: spouse };
+        }
+        if (member.gender === "female" && spouse.gender !== "female") {
+          return { left: spouse, right: member };
+        }
+        if (member.gender !== "female" && spouse.gender === "female") {
+          return { left: member, right: spouse };
+        }
+        return { left: member, right: spouse };
+      }
+
+      function appendFamilyGroupToColumn(
+        column,
+        member,
+        processedGenIds,
+        extraClass,
+      ) {
+        if (processedGenIds.has(member.id)) return;
+        const familyGroup = document.createElement("div");
+        familyGroup.className = `flex items-center rounded-2xl border shadow-xs hover:border-slate-300 transition relative ${
+          isSimpleTreeLayout() ? "gap-1 p-1" : "gap-2 p-2"
+        } ${extraClass || "bg-slate-100/80 border-slate-200/90"}`;
+
+        const spouse = member.spouseId
+          ? currentMembers.find((s) => s.id === member.spouseId)
+          : null;
+        const usableSpouse =
+          spouse && !processedGenIds.has(spouse.id) ? spouse : null;
+        const { left, right } = getCoupleDisplayOrder(member, usableSpouse);
+
+        familyGroup.appendChild(createNodeCardHTML(left));
+        processedGenIds.add(left.id);
+
+        if (right) {
+          const ringIcon = document.createElement("div");
+          ringIcon.id = `spouse-ring-${left.id}-${right.id}`;
+          ringIcon.className = `${
+            isSimpleTreeLayout() ? "w-5 h-5 text-[9px]" : "w-6 h-6 text-[10px]"
+          } rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold shadow-xs shrink-0 cursor-pointer hover:scale-110 transition`;
+          ringIcon.title = `Pasangan: ${left.name} & ${right.name}`;
+          ringIcon.innerHTML = '<i class="fa-solid fa-ring"></i>';
+          familyGroup.appendChild(ringIcon);
+          familyGroup.appendChild(createNodeCardHTML(right));
+          processedGenIds.add(right.id);
+        }
+
+        column.appendChild(familyGroup);
+      }
+
+      function renderTreeView() {
+        const container = document.getElementById("treeNodesContainer");
+        const svg = document.getElementById("treeSvgLines");
+        container.innerHTML = "";
+        svg.innerHTML = "";
+        container.className = isSimpleTreeLayout()
+          ? "relative z-10 min-w-max flex flex-col items-center space-y-12 py-4"
+          : "relative z-10 min-w-max flex flex-col items-center space-y-20 py-6";
+
+        if (currentMembers.length === 0) {
+          container.innerHTML = `<p class="text-slate-400 text-xs py-10">Belum ada data anggota keluarga. Klik 'Tambah Anggota' untuk memulai.</p>`;
+          return;
+        }
+
+        // 1. Group members by generation
+        const genMap = {};
+        currentMembers.forEach((m) => {
+          const gen = m.generation || 1;
+          if (!genMap[gen]) genMap[gen] = [];
+          genMap[gen].push(m);
+        });
+
+        const sortedGens = Object.keys(genMap).sort(
+          (a, b) => parseInt(a) - parseInt(b),
+        );
+        const firstGenKey = sortedGens[0];
+        const gen1Members = genMap[1] || genMap[firstGenKey] || [];
+
+        // 2. Determine Root Clusters in Gen 1
+        const rootClusters = [];
+        const processedRootIds = new Set();
+
+        gen1Members.forEach((m) => {
+          if (processedRootIds.has(m.id)) return;
+          const cluster = [m];
+          processedRootIds.add(m.id);
+          if (m.spouseId) {
+            const spouse = gen1Members.find((s) => s.id === m.spouseId);
+            if (spouse && !processedRootIds.has(spouse.id)) {
+              cluster.push(spouse);
+              processedRootIds.add(spouse.id);
+            }
+          }
+          rootClusters.push(cluster);
+        });
+
+        if (rootClusters.length === 0 && currentMembers.length > 0) {
+          rootClusters.push([currentMembers[0]]);
+        }
+
+        assignNatalAndDisplaySlots(rootClusters);
+
+        const numBranches = rootClusters.length;
+        const midBranchIndexes = [];
+        for (let i = 0; i < numBranches - 1; i++) {
+          const mid = i + 0.5;
+          if (
+            currentMembers.some((m) =>
+              sameTreeSlot(treeMemberBranchMap[m.id], mid),
+            )
+          ) {
+            midBranchIndexes.push(i);
+          }
+        }
+
+        // 4. Render Generation Rows with aligned Branch Columns
+        sortedGens.forEach((gen) => {
+          const genRow = document.createElement("div");
+          genRow.className = isSimpleTreeLayout()
+            ? "flex justify-center items-start gap-2 sm:gap-4 relative w-full min-w-max"
+            : "flex justify-center items-start gap-4 sm:gap-8 relative w-full min-w-max";
+          genRow.setAttribute("data-gen", gen);
+
+          const membersInGen = genMap[gen].slice().sort(compareMembersForDisplay);
+          const processedGenIds = new Set();
+
+          for (let bIndex = 0; bIndex < numBranches; bIndex++) {
+            const branchCol = document.createElement("div");
+            branchCol.className = isSimpleTreeLayout()
+              ? "flex flex-wrap justify-center items-center gap-2 min-w-0 px-1 py-1"
+              : "flex flex-wrap justify-center items-center gap-4 sm:gap-6 min-w-[240px] px-2 py-1";
+            branchCol.setAttribute("data-gen", gen);
+            branchCol.setAttribute("data-branch", bIndex);
+
+            membersInGen.forEach((member) => {
+              if (processedGenIds.has(member.id)) return;
+              if (!sameTreeSlot(treeMemberBranchMap[member.id], bIndex)) return;
+              appendFamilyGroupToColumn(branchCol, member, processedGenIds);
+            });
+
+            genRow.appendChild(branchCol);
+
+            if (bIndex < numBranches - 1) {
+              const useMid = midBranchIndexes.includes(bIndex);
+              if (useMid) {
+                const midCol = document.createElement("div");
+                midCol.className =
+                  "flex flex-col justify-start items-center gap-2 min-w-[260px] px-2 py-1 self-stretch";
+                midCol.setAttribute("data-gen", gen);
+                midCol.setAttribute("data-branch", `${bIndex}-mid`);
+
+                if (parseInt(gen) === 1) {
+                  const badge = document.createElement("div");
+                  badge.id = `branch-fence-${bIndex}`;
+                  badge.className =
+                    "flex flex-col items-center justify-center px-2 py-1 select-none opacity-80";
+                  badge.innerHTML = `
+                                <div class="h-2 border-l-2 border-dashed border-violet-300"></div>
+                                <div class="my-1 px-2.5 py-1 bg-violet-100 text-violet-700 text-[10px] font-bold rounded-full border border-violet-200 shadow-xs flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fa-solid fa-heart text-violet-500"></i>
+                                    <span>Beranda Antar Keluarga</span>
+                                </div>
+                                <div class="h-2 border-l-2 border-dashed border-violet-300"></div>
+                            `;
+                  midCol.appendChild(badge);
+                } else {
+                  const label = document.createElement("div");
+                  label.className =
+                    "text-[9px] font-bold uppercase tracking-wider text-violet-500 bg-violet-50 border border-violet-100 rounded-full px-2 py-0.5";
+                  label.textContent = "Tengah kedua keluarga";
+                  midCol.appendChild(label);
+                }
+
+                membersInGen.forEach((member) => {
+                  if (processedGenIds.has(member.id)) return;
+                  if (
+                    !sameTreeSlot(treeMemberBranchMap[member.id], bIndex + 0.5)
+                  )
+                    return;
+                  appendFamilyGroupToColumn(
+                    midCol,
+                    member,
+                    processedGenIds,
+                    "bg-violet-50/80 border-violet-200",
+                  );
+                });
+
+                genRow.appendChild(midCol);
+              } else {
+                const fenceDiv = document.createElement("div");
+                fenceDiv.className =
+                  "flex flex-col items-center justify-center px-2 sm:px-4 shrink-0 select-none opacity-80 self-stretch";
+
+                if (parseInt(gen) === 1) {
+                  fenceDiv.id = `branch-fence-${bIndex}`;
+                  fenceDiv.innerHTML = `
+                                <div class="h-2 border-l-2 border-dashed border-slate-300"></div>
+                                <div class="my-1 px-2.5 py-1 bg-slate-200/90 text-slate-600 text-[10px] font-bold rounded-full border border-slate-300 shadow-xs flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fa-solid fa-arrows-split-up-and-left text-slate-500"></i>
+                                    <span>Jalur Keluarga Terpisah</span>
+                                </div>
+                                <div class="h-2 border-l-2 border-dashed border-slate-300"></div>
+                            `;
+                } else {
+                  fenceDiv.id = `branch-fence-spacer-${gen}-${bIndex}`;
+                  fenceDiv.innerHTML = `<div class="${isSimpleTreeLayout() ? "w-8 sm:w-12" : "w-20 sm:w-28"}"></div>`;
+                }
+                genRow.appendChild(fenceDiv);
+              }
+            }
+          }
+
+          container.appendChild(genRow);
+        });
+
+        // Draw SVG connections after DOM structure updates
+        requestAnimationFrame(() => {
+          drawTreeSvgConnections();
+          if (lockedHighlightedMemberId) {
+            highlightLineagePath(lockedHighlightedMemberId);
+          }
+        });
+      }
+
+      function createNodeCardHTML(m, isInteractiveTree = true, options = {}) {
+        const card = document.createElement("div");
+        card.id = `node-${m.id}`;
+        const fluid = !!options.fluid;
+
+        const isBloodline = m.category === "bloodline";
+        const isAlive = m.isAlive !== false;
+
+        let categoryBg = isBloodline
+          ? "border-brand-300 bg-white"
+          : "border-amber-300 border-dashed bg-amber-50/20";
+        if (!isAlive) {
+          categoryBg = "border-slate-300 bg-slate-100/80 grayscale opacity-90";
+        }
+
+        const avatar = getMemberAvatarSrc(m);
+        const simple = isInteractiveTree && !fluid && isSimpleTreeLayout();
+        const shortName = getShortDisplayName(m.name);
+
+        const categoryBadge = isBloodline
+          ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-700">🩸 ${fluid ? "Kandung" : "Keturunan"}</span>`
+          : `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">💍 Pasangan</span>`;
+
+        const statusBadge = isAlive
+          ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-100 text-emerald-700">🟢 Hidup</span>`
+          : `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-200 text-slate-700">🕊️ Wafat</span>`;
+
+        card.className = simple
+          ? `node-card node-card-simple p-1.5 rounded-xl border-2 ${categoryBg} shadow-sm hover:shadow-md transition w-[4.85rem] sm:w-[5.25rem] flex flex-col items-center gap-1 relative group cursor-pointer select-none`
+          : `node-card p-2 sm:p-2.5 rounded-xl border-2 ${categoryBg} shadow-sm hover:shadow-md transition ${fluid ? "w-full min-w-0" : "w-52"} flex items-center gap-2 sm:gap-2.5 relative group cursor-pointer select-none`;
+
+        if (isInteractiveTree) {
+          card.onmouseenter = () => {
+            if (!lockedHighlightedMemberId) highlightLineagePath(m.id);
+          };
+          card.onmouseleave = () => {
+            if (!lockedHighlightedMemberId) resetLineageHighlight();
+          };
+          card.onclick = (e) => {
+            if (lockedHighlightedMemberId === m.id) {
+              openDetailModal(m.id);
+            } else {
+              lockLineageHighlight(m.id);
+            }
+          };
+        } else {
+          card.onclick = () => openDetailModal(m.id);
+        }
+
+        const childOrder = parsePositiveInt(m.childOrder);
+        const orderBadge = childOrder
+          ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-600">Anak ke-${childOrder}</span>`
+          : "";
+
+        if (simple) {
+          card.title = m.name;
+          card.innerHTML = `
+                <div class="relative shrink-0">
+                    <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-10 h-10 sm:w-11 sm:h-11 rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}">
+                    ${!isAlive ? '<div class="absolute -top-1 -right-1 bg-slate-800 text-white w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px]" title="Sudah Wafat"><i class="fa-solid fa-ribbon"></i></div>' : ""}
+                </div>
+                <h4 class="font-bold text-slate-800 text-[10px] leading-tight text-center w-full">${shortName}</h4>
+            `;
+          return card;
+        }
+
+        card.innerHTML = `
+                <div class="relative shrink-0">
+                    <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="${fluid ? "w-9 h-9 sm:w-11 sm:h-11" : "w-11 h-11"} rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}">
+                    ${!isAlive ? '<div class="absolute -top-1 -right-1 bg-slate-800 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]" title="Sudah Wafat"><i class="fa-solid fa-ribbon"></i></div>' : ""}
+                </div>
+                <div class="flex-1 min-w-0 text-xs">
+                    <h4 class="font-bold text-slate-800 truncate text-[11px] leading-tight">${m.name}</h4>
+                    <div class="flex items-center gap-1 mt-1 flex-wrap">
+                        ${categoryBadge}
+                        ${statusBadge}
+                        ${orderBadge}
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-1 truncate">
+                        ${m.birthYear ? "L. " + m.birthYear : ""} ${!isAlive && m.deathYear ? "- W. " + m.deathYear : ""}
+                    </p>
+                </div>
+            `;
+        return card;
+      }
+
+      function getOffsetRelativeToWrapper(element, wrapper) {
+        let x = 0;
+        let y = 0;
+        let curr = element;
+        while (curr && curr !== wrapper) {
+          x += curr.offsetLeft;
+          y += curr.offsetTop;
+          const parent = curr.offsetParent;
+          if (!parent || parent === curr) break;
+          curr = parent;
+        }
+        if (curr === wrapper) {
+          return {
+            x,
+            y,
+            width: element.offsetWidth,
+            height: element.offsetHeight,
+          };
+        }
+        const elRect = element.getBoundingClientRect();
+        const wrapRect = wrapper.getBoundingClientRect();
+        const sx = wrapRect.width / Math.max(wrapper.offsetWidth, 1);
+        const sy = wrapRect.height / Math.max(wrapper.offsetHeight, 1);
+        return {
+          x: (elRect.left - wrapRect.left) / (sx || 1),
+          y: (elRect.top - wrapRect.top) / (sy || 1),
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+        };
+      }
+
+      function getFamilyGroupKey(fatherId, motherId) {
+        return [fatherId, motherId].filter(Boolean).sort().join("_");
+      }
+
+      function resolveParentCoupleIds(fatherId, motherId) {
+        let fId = fatherId || "";
+        let mId = motherId || "";
+        const father = fId
+          ? currentMembers.find((s) => s.id === fId)
+          : null;
+        const mother = mId
+          ? currentMembers.find((s) => s.id === mId)
+          : null;
+        if (father && !mId && father.spouseId) mId = father.spouseId;
+        if (mother && !fId && mother.spouseId) fId = mother.spouseId;
+        return { fatherId: fId, motherId: mId };
+      }
+
+      function addChildToFamilyGroup(familyGroupMap, fatherId, motherId, child) {
+        const resolved = resolveParentCoupleIds(fatherId, motherId);
+        fatherId = resolved.fatherId;
+        motherId = resolved.motherId;
+        if (!fatherId && !motherId) return;
+        const parentKey = getFamilyGroupKey(fatherId, motherId);
+        if (!familyGroupMap.has(parentKey)) {
+          familyGroupMap.set(parentKey, {
+            fatherId,
+            motherId,
+            children: [],
+          });
+        }
+        const group = familyGroupMap.get(parentKey);
+        if (!group.children.some((c) => c.id === child.id)) {
+          group.children.push(child);
+        }
+      }
+
+      function inferParentsForUnlinkedChildren(familyGroupMap) {
+        const byBranchGen = {};
+        currentMembers.forEach((m) => {
+          const g = parseInt(m.generation, 10) || 1;
+          const b = treeMemberBranchMap[m.id] ?? 0;
+          const key = `${b}_${g}`;
+          if (!byBranchGen[key]) byBranchGen[key] = [];
+          byBranchGen[key].push(m);
+        });
+
+        currentMembers.forEach((child) => {
+          if (child.fatherId || child.motherId) return;
+          if (child.category !== "bloodline") return;
+          if (!document.getElementById(`node-${child.id}`)) return;
+          const g = parseInt(child.generation, 10) || 1;
+          if (g <= 1) return;
+          const branch = treeMemberBranchMap[child.id] ?? 0;
+          const prev = byBranchGen[`${branch}_${g - 1}`] || [];
+          if (!prev.length) return;
+
+          const processed = new Set();
+          const couples = [];
+          prev.forEach((p) => {
+            if (processed.has(p.id)) return;
+            processed.add(p.id);
+            const spouse = p.spouseId
+              ? currentMembers.find((s) => s.id === p.spouseId)
+              : null;
+            if (spouse) processed.add(spouse.id);
+            couples.push([p, spouse].filter(Boolean));
+          });
+          if (couples.length !== 1) return;
+
+          let fatherId = "";
+          let motherId = "";
+          couples[0].forEach((p) => {
+            if (p.gender === "male" && !fatherId) fatherId = p.id;
+            if (p.gender === "female" && !motherId) motherId = p.id;
+          });
+          if (!fatherId && !motherId) fatherId = couples[0][0].id;
+          addChildToFamilyGroup(familyGroupMap, fatherId, motherId, child);
+        });
+      }
+
+      function drawTreeSvgConnections() {
+        const svg = document.getElementById("treeSvgLines");
+        const wrapper = document.getElementById("treeZoomWrapper");
+        if (!wrapper || !svg) return;
+
+        const unscaledWidth = wrapper.scrollWidth || wrapper.offsetWidth;
+        const unscaledHeight = wrapper.scrollHeight || wrapper.offsetHeight;
+
+        svg.setAttribute("width", unscaledWidth);
+        svg.setAttribute("height", unscaledHeight);
+        svg.setAttribute("viewBox", `0 0 ${unscaledWidth} ${unscaledHeight}`);
+
+        let bgHalos = "";
+        let linePaths = "";
+
+        const familyGroupMap = new Map();
+
+        currentMembers.forEach((m) => {
+          const childNode = document.getElementById(`node-${m.id}`);
+          if (!childNode) return;
+          if (!m.fatherId && !m.motherId) return;
+          addChildToFamilyGroup(familyGroupMap, m.fatherId, m.motherId, m);
+        });
+        inferParentsForUnlinkedChildren(familyGroupMap);
+
+        familyGroupMap.forEach((group) => {
+          group.children.sort(compareSiblings);
+        });
+
+        // 1. Draw Spouse Lines
+        currentMembers.forEach((m) => {
+          if (m.spouseId && m.gender === "male") {
+            const p1Node = document.getElementById(`node-${m.id}`);
+            const p2Node = document.getElementById(`node-${m.spouseId}`);
+            if (p1Node && p2Node) {
+              const pos1 = getOffsetRelativeToWrapper(p1Node, wrapper);
+              const pos2 = getOffsetRelativeToWrapper(p2Node, wrapper);
+
+              const leftPos = pos1.x <= pos2.x ? pos1 : pos2;
+              const rightPos = pos1.x <= pos2.x ? pos2 : pos1;
+              const x1 = leftPos.x + leftPos.width;
+              const y1 = leftPos.y + leftPos.height / 2;
+              const x2 = rightPos.x;
+              const y2 = rightPos.y + rightPos.height / 2;
+
+              const pathD = `M ${x1} ${y1} L ${x2} ${y2}`;
+              const lineKey = `line-spouse-${m.id}-${m.spouseId}`;
+
+              bgHalos += `<path d="${pathD}" class="tree-line-bg" />`;
+              linePaths += `<path d="${pathD}" id="${lineKey}" data-spouse1="${m.id}" data-spouse2="${m.spouseId}" class="tree-line-spouse tree-line-clickable" />`;
+            }
+          }
+        });
+
+        // 2. Draw Parent-to-Child Lines (local descendants + helper lines to married-out children)
+        familyGroupMap.forEach((group, key) => {
+          const fatherNode = group.fatherId
+            ? document.getElementById(`node-${group.fatherId}`)
+            : null;
+          const motherNode = group.motherId
+            ? document.getElementById(`node-${group.motherId}`)
+            : null;
+
+          const parentPts = [];
+          if (fatherNode) {
+            const fPos = getOffsetRelativeToWrapper(fatherNode, wrapper);
+            parentPts.push({
+              id: group.fatherId,
+              x: fPos.x + fPos.width / 2,
+              y: fPos.y + fPos.height,
+            });
+          }
+          if (motherNode) {
+            const mPos = getOffsetRelativeToWrapper(motherNode, wrapper);
+            parentPts.push({
+              id: group.motherId,
+              x: mPos.x + mPos.width / 2,
+              y: mPos.y + mPos.height,
+            });
+          }
+          if (!parentPts.length) return;
+
+          const originX =
+            parentPts.reduce((sum, p) => sum + p.x, 0) / parentPts.length;
+          const originY = Math.max(...parentPts.map((p) => p.y));
+
+          const localChildren = [];
+          const remoteChildren = [];
+          group.children.forEach((child) => {
+            const node = document.getElementById(`node-${child.id}`);
+            if (!node) return;
+            const item = {
+              child,
+              pos: getOffsetRelativeToWrapper(node, wrapper),
+            };
+            if (isMarriedIntoOtherFamily(child)) remoteChildren.push(item);
+            else localChildren.push(item);
+          });
+
+          const parentIds = [group.fatherId, group.motherId]
+            .filter(Boolean)
+            .join(",");
+          const primaryParent = group.motherId || group.fatherId;
+
+          const appendLine = (d, className, extraAttrs) => {
+            bgHalos += `<path d="${d}" class="tree-line-bg" />`;
+            linePaths += `<path d="${d}" ${extraAttrs} class="${className} tree-line-clickable" />`;
+          };
+
+          if (localChildren.length > 0) {
+            const minYChild = Math.min(...localChildren.map((c) => c.pos.y));
+            const midY = originY + Math.max(24, (minYChild - originY) * 0.5);
+            const childXs = localChildren.map((c) => c.pos.x + c.pos.width / 2);
+            const minX = Math.min(...childXs, ...parentPts.map((p) => p.x));
+            const maxX = Math.max(...childXs, ...parentPts.map((p) => p.x));
+            const localIds = localChildren.map((c) => c.child.id).join(",");
+
+            parentPts.forEach((p) => {
+              appendLine(
+                `M ${p.x} ${p.y} V ${midY} H ${originX}`,
+                "tree-line-descent",
+                `data-parents="${parentIds}" data-parent="${p.id}" data-children="${localIds}" data-line-role="parent-drop"`,
+              );
+            });
+            appendLine(
+              `M ${minX} ${midY} L ${maxX} ${midY}`,
+              "tree-line-descent",
+              `id="line-bar-${key}" data-parents="${parentIds}" data-children="${localIds}" data-line-role="bar"`,
+            );
+            localChildren.forEach(({ child, pos }) => {
+              const childX = pos.x + pos.width / 2;
+              const childY = pos.y;
+              appendLine(
+                `M ${childX} ${midY} L ${childX} ${childY}`,
+                "tree-line-descent",
+                `id="line-${primaryParent}-${child.id}" data-parents="${parentIds}" data-parent="${primaryParent}" data-child="${child.id}"`,
+              );
+            });
+          }
+
+          remoteChildren.forEach(({ child, pos }) => {
+            const junctionX = originX;
+            const parentBottom = originY;
+            const childMidY = pos.y + pos.height / 2;
+            const laneY =
+              parentBottom +
+              Math.max(18, Math.min(36, (pos.y - parentBottom) * 0.28));
+            const childCenter = pos.x + pos.width / 2;
+            const sideX = junctionX <= childCenter ? pos.x : pos.x + pos.width;
+
+            parentPts.forEach((p) => {
+              const dropD = `M ${p.x} ${p.y} V ${laneY} H ${junctionX}`;
+              appendLine(
+                dropD,
+                "tree-line-helper",
+                `data-parents="${parentIds}" data-parent="${p.id}" data-child="${child.id}" data-helper="1"`,
+              );
+            });
+
+            const bridgeD = `M ${junctionX} ${laneY} H ${sideX} V ${childMidY}`;
+            appendLine(
+              bridgeD,
+              "tree-line-helper",
+              `id="line-helper-${key}-${child.id}" data-parents="${parentIds}" data-parent="${primaryParent}" data-child="${child.id}" data-helper="1"`,
+            );
+          });
+        });
+
+        // 3. Draw SVG Vertical Fence Lines for Gen 1 branches
+        const fences = document.querySelectorAll(
+          '[id^="branch-fence-"]:not([id*="spacer"])',
+        );
+        fences.forEach((fence) => {
+          const pos = getOffsetRelativeToWrapper(fence, wrapper);
+          const x = pos.x + pos.width / 2;
+          const y1 = pos.y + pos.height;
+          const y2 = unscaledHeight - 20;
+
+          const pathD = `M ${x} ${y1} L ${x} ${y2}`;
+          linePaths += `<path d="${pathD}" class="tree-fence-line" opacity="0.4" />`;
+        });
+
+        svg.innerHTML = bgHalos + linePaths;
+        bindTreeLineClicks(svg);
+        if (lockedHighlightedMemberId) {
+          applyTreeLineHighlight(
+            getRelatedMemberIds(lockedHighlightedMemberId),
+          );
+        }
+      }
+
+      function getLineFocusMemberId(line) {
+        const child = line.getAttribute("data-child");
+        if (child) return child;
+        const spouse1 = line.getAttribute("data-spouse1");
+        if (spouse1) return spouse1;
+        const parents = parseLineIds(
+          line.getAttribute("data-parents") || line.getAttribute("data-parent"),
+        );
+        return parents[0] || null;
+      }
+
+      function bindTreeLineClicks(svg) {
+        svg.querySelectorAll("path.tree-line-clickable").forEach((line) => {
+          line.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetId = getLineFocusMemberId(line);
+            if (targetId) lockLineageHighlight(targetId);
+          });
+          line.addEventListener("mouseenter", () => {
+            if (lockedHighlightedMemberId) return;
+            const targetId = getLineFocusMemberId(line);
+            if (targetId) highlightLineagePath(targetId);
+          });
+          line.addEventListener("mouseleave", () => {
+            if (!lockedHighlightedMemberId) resetLineageHighlight();
+          });
+        });
+      }
+
+      function initCanvasPan() {
+        const container = document.getElementById("treeCanvasContainer");
+        if (!container) return;
+
+        let isMouseDown = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        container.addEventListener("mousedown", (e) => {
+          if (e.target.closest(".node-card") || e.target.closest("button"))
+            return;
+
+          isMouseDown = true;
+          container.classList.add("is-dragging");
+          startX = e.pageX - container.offsetLeft;
+          startY = e.pageY - container.offsetTop;
+          scrollLeft = container.scrollLeft;
+          scrollTop = container.scrollTop;
+        });
+
+        container.addEventListener("mouseleave", () => {
+          isMouseDown = false;
+          container.classList.remove("is-dragging");
+        });
+
+        container.addEventListener("mouseup", () => {
+          isMouseDown = false;
+          container.classList.remove("is-dragging");
+        });
+
+        container.addEventListener("mousemove", (e) => {
+          if (!isMouseDown) return;
+          e.preventDefault();
+          const x = e.pageX - container.offsetLeft;
+          const y = e.pageY - container.offsetTop;
+          const walkX = (x - startX) * 1.5;
+          const walkY = (y - startY) * 1.5;
+          container.scrollLeft = scrollLeft - walkX;
+          container.scrollTop = scrollTop - walkY;
+        });
+
+        container.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            const rect = container.getBoundingClientRect();
+            const origin = {
+              x: e.clientX - rect.left,
+              y: e.clientY - rect.top,
+            };
+            const step = e.deltaY > 0 ? -0.12 : 0.12;
+            setTreeZoom(currentTreeZoom + step, origin);
+          },
+          { passive: false },
+        );
+      }
+
+      let resizeObserver = null;
+      function setupResizeObserver() {
+        const container = document.getElementById("treeCanvasContainer");
+        if (!container || resizeObserver) return;
+        resizeObserver = new ResizeObserver(() => {
+          if (currentView === "tree") {
+            requestAnimationFrame(() => drawTreeSvgConnections());
+          }
+        });
+        resizeObserver.observe(container);
+      }
+
+      function switchView(viewName) {
+        currentView = viewName;
+
+        document
+          .getElementById("treeViewSection")
+          .classList.toggle("hidden", viewName !== "tree");
+        document
+          .getElementById("cardsViewSection")
+          .classList.toggle("hidden", viewName !== "cards");
+        document
+          .getElementById("listViewSection")
+          .classList.toggle("hidden", viewName !== "list");
+
+        // Button active states
+        ["Tree", "Cards", "List"].forEach((type) => {
+          const btn = document.getElementById(`view${type}Btn`);
+          const isCurrent = type.toLowerCase() === viewName;
+          if (btn) {
+            btn.className = isCurrent
+              ? "px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-brand-600 shadow transition flex items-center gap-1.5"
+              : "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5";
+          }
+        });
+
+        loadAndRenderData();
+      }
+
+      function isStandalonePwa() {
+        return (
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone === true
+        );
+      }
+
+      function isIosDevice() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent);
+      }
+
+      function initPwa() {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("./sw.js").catch((err) => {
+            console.warn("Pendaftaran service worker gagal", err);
+          });
+        }
+
+        const banner = document.getElementById("pwaInstallBanner");
+        const installBtn = document.getElementById("pwaInstallBtn");
+        const dismissBtn = document.getElementById("pwaInstallDismiss");
+        const hint = document.getElementById("pwaInstallHint");
+        if (!banner) return;
+
+        if (isStandalonePwa() || localStorage.getItem(PWA_INSTALL_DISMISS_KEY)) {
+          return;
+        }
+
+        window.addEventListener("beforeinstallprompt", (event) => {
+          event.preventDefault();
+          deferredPwaPrompt = event;
+          banner.classList.add("is-visible");
+        });
+
+        window.addEventListener("appinstalled", () => {
+          deferredPwaPrompt = null;
+          banner.classList.remove("is-visible");
+        });
+
+        if (isIosDevice() && !isStandalonePwa()) {
+          if (hint) {
+            hint.textContent =
+              "Di Safari, ketuk Bagikan lalu pilih Tambah ke Layar Utama.";
+          }
+          if (installBtn) installBtn.classList.add("hidden");
+          banner.classList.add("is-visible");
+        }
+
+        installBtn?.addEventListener("click", async () => {
+          if (!deferredPwaPrompt) return;
+          deferredPwaPrompt.prompt();
+          await deferredPwaPrompt.userChoice;
+          deferredPwaPrompt = null;
+          banner.classList.remove("is-visible");
+        });
+
+        dismissBtn?.addEventListener("click", () => {
+          localStorage.setItem(PWA_INSTALL_DISMISS_KEY, "1");
+          banner.classList.remove("is-visible");
+        });
+      }
+
+      window.onload = async () => {
+        const preview = document.getElementById("formAvatarPreview");
+        if (preview && !preview.getAttribute("src")) {
+          preview.src = getPlaceholderPhoto();
+        }
+        initPwa();
+        updateTreeLayoutButtons();
+        await initDB();
+        await seedInitialDataIfNeeded();
+        initCanvasPan();
+        setupResizeObserver();
+        await loadAndRenderData();
+        maybeShowGuideForNewUser();
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        if (
+          !document.getElementById("guideModal")?.classList.contains("hidden")
+        ) {
+          closeGuideModal();
+          return;
+        }
+        if (isTreeFullscreen) exitTreeFullscreen();
+      });
+
+      document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement && isTreeFullscreen) {
+          isTreeFullscreen = false;
+          document.body.classList.remove("is-tree-preview");
+          updateFullscreenButton();
+          requestAnimationFrame(() => drawTreeSvgConnections());
+        }
+      });
+    </script>
+  </body>
+</html>
