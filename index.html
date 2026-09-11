@@ -77,26 +77,18 @@
           "Daftar anggota keluarga",
           "Cadangan dan restore JSON",
           "Ekspor PNG dan PDF beserta foto",
-          "Progressive Web App"
+          "Progressive Web App",
+          "Mode offline dengan data tersimpan di perangkat"
         ]
       }
     </script>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="vendor/fonts/inter.css" />
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Google Fonts Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-      rel="stylesheet" />
-
-    <!-- Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+      href="vendor/fontawesome/css/all.min.css" />
+    <script src="vendor/js/tailwind.js"></script>
+    <script src="vendor/js/html2canvas.min.js"></script>
+    <script src="vendor/js/jspdf.umd.min.js"></script>
 
     <script>
       tailwind.config = {
@@ -561,6 +553,12 @@
       #pwaInstallBanner.is-visible {
         display: flex;
       }
+      #offlineBadge {
+        display: none;
+      }
+      body.is-offline #offlineBadge {
+        display: inline-flex;
+      }
     </style>
   </head>
   <body
@@ -583,6 +581,12 @@
                 class="text-[10px] sm:text-xs bg-brand-500/20 text-brand-300 font-medium px-2 py-0.5 rounded-full border border-brand-500/30 hidden xs:inline-block"
                 >IndexedDB Visual</span
               >
+              <span
+                id="offlineBadge"
+                class="text-[10px] bg-amber-500/20 text-amber-200 font-medium px-2 py-0.5 rounded-full border border-amber-400/30 items-center gap-1">
+                <i class="fa-solid fa-wifi"></i>
+                Offline
+              </span>
             </h1>
             <p class="text-[11px] text-slate-400 hidden sm:block">
               Sistem pencatatan offline, penelusuran alur keturunan & ekspor
@@ -1064,7 +1068,8 @@
                 alt="Pratinjau foto"
                 crossorigin="anonymous"
                 referrerpolicy="no-referrer"
-                class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-300 bg-white" />
+                class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-300 bg-white"
+                onerror="this.onerror=null;this.src=makeAvatarDataUrl(this.alt)" />
               <label
                 for="formPhotoInput"
                 class="absolute -bottom-1 -right-1 bg-brand-600 text-white p-1.5 rounded-lg shadow hover:bg-brand-500 cursor-pointer">
@@ -1450,7 +1455,8 @@
               alt="Foto anggota"
               crossorigin="anonymous"
               referrerpolicy="no-referrer"
-              class="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md bg-white" />
+              class="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-md bg-white"
+              onerror="this.onerror=null;this.src=makeAvatarDataUrl(this.alt)" />
             <div class="flex gap-2">
               <button
                 id="detailEditBtn"
@@ -1602,6 +1608,12 @@
             Sistem ini menyimpan data silsilah di browser Anda (IndexedDB). Data
             tidak terkirim ke server. Cadangkan file JSON secara berkala agar
             tidak hilang.
+          </p>
+          <p class="text-slate-700">
+            Setelah dibuka sekali saat online, aplikasi bisa dipakai
+            <strong>tanpa internet</strong>. Pasang ke layar utama agar lebih
+            mudah dibuka offline. Foto anggota yang diunggah ikut tersimpan di
+            perangkat.
           </p>
 
           <section class="space-y-1.5">
@@ -1896,11 +1908,32 @@
         return makeAvatarDataUrl("Foto", "Foto");
       }
 
+      function isLocalAvatarUrl(url) {
+        return (
+          typeof url === "string" &&
+          url.length > 0 &&
+          !/^https?:\/\//i.test(url)
+        );
+      }
+
       function getMemberAvatarSrc(member, fallbackName) {
         if (member && typeof member === "object") {
-          return member.avatarUrl || makeAvatarDataUrl(member.name);
+          if (isLocalAvatarUrl(member.avatarUrl)) return member.avatarUrl;
+          if (
+            typeof member.avatarUrl === "string" &&
+            /^https?:\/\//i.test(member.avatarUrl) &&
+            navigator.onLine
+          ) {
+            return member.avatarUrl;
+          }
+          return makeAvatarDataUrl(member.name);
         }
-        return member || makeAvatarDataUrl(fallbackName);
+        if (isLocalAvatarUrl(member)) return member;
+        return makeAvatarDataUrl(fallbackName);
+      }
+
+      function avatarImgHtml(src, alt, className) {
+        return `<img src="${src}" alt="${escapeXml(alt)}" class="${className}" onerror="this.onerror=null;this.src=makeAvatarDataUrl(this.alt)">`;
       }
 
       function showToast(message, type = "info") {
@@ -2266,8 +2299,7 @@
           fatherId: "",
           motherId: "",
           spouseId: "mem_2",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Pendiri garis keturunan utama keluarga.",
         },
         {
@@ -2283,8 +2315,7 @@
           fatherId: "",
           motherId: "",
           spouseId: "mem_1",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Ibu tercinta keluarga besar.",
         },
         // Additional Generation 1 Root Node to demonstrate Vertical Branch Separation Line ("Pagar Garis Kebawah")
@@ -2301,8 +2332,7 @@
           fatherId: "",
           motherId: "",
           spouseId: "mem_9",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Besan utama (Orang tua dari Ratna Sari).",
         },
         {
@@ -2318,8 +2348,7 @@
           fatherId: "",
           motherId: "",
           spouseId: "mem_8",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Ibu Ratna Sari.",
         },
         {
@@ -2335,8 +2364,7 @@
           fatherId: "mem_1",
           motherId: "mem_2",
           spouseId: "mem_4",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Anak sulung.",
         },
         {
@@ -2352,8 +2380,7 @@
           fatherId: "mem_8",
           motherId: "mem_9",
           spouseId: "mem_3",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Istri Budi Santoso (Menantu).",
         },
         {
@@ -2369,8 +2396,7 @@
           fatherId: "mem_1",
           motherId: "mem_2",
           spouseId: "",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Anak kedua.",
         },
         {
@@ -2386,8 +2412,7 @@
           fatherId: "mem_3",
           motherId: "mem_4",
           spouseId: "",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Cucu pertama.",
         },
         {
@@ -2403,8 +2428,7 @@
           fatherId: "mem_3",
           motherId: "mem_4",
           spouseId: "",
-          avatarUrl:
-            "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+          avatarUrl: "",
           notes: "Cucu kedua.",
         },
       ];
@@ -2699,7 +2723,7 @@
             "hover:bg-slate-50 transition border-b border-slate-100";
           tr.innerHTML = `
                     <td class="px-4 py-3 flex items-center gap-2.5">
-                        <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-8 h-8 rounded-lg object-cover border border-slate-200">
+                        ${avatarImgHtml(avatar, m.name, "w-8 h-8 rounded-lg object-cover border border-slate-200")}
                         <div>
                             <div class="font-bold text-slate-800">${m.name}</div>
                             <div class="text-[10px] text-slate-400">${m.gender === "male" ? "Laki-Laki" : "Perempuan"}</div>
@@ -2735,7 +2759,7 @@
               "w-full rounded-xl border border-slate-200 bg-white p-3";
             item.innerHTML = `
                         <div class="flex items-start gap-2.5">
-                            <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0">
+                            ${avatarImgHtml(avatar, m.name, "w-11 h-11 rounded-lg object-cover border border-slate-200 shrink-0")}
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0">
@@ -3900,7 +3924,7 @@
           card.title = m.name;
           card.innerHTML = `
                 <div class="relative shrink-0">
-                    <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="w-10 h-10 sm:w-11 sm:h-11 rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}">
+                    ${avatarImgHtml(avatar, m.name, `w-10 h-10 sm:w-11 sm:h-11 rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}`)}
                     ${!isAlive ? '<div class="absolute -top-1 -right-1 bg-slate-800 text-white w-3.5 h-3.5 rounded-full flex items-center justify-center text-[7px]" title="Sudah Wafat"><i class="fa-solid fa-ribbon"></i></div>' : ""}
                 </div>
                 <h4 class="font-bold text-slate-800 text-[10px] leading-tight text-center w-full">${shortName}</h4>
@@ -3910,7 +3934,7 @@
 
         card.innerHTML = `
                 <div class="relative shrink-0">
-                    <img src="${avatar}" alt="${m.name}" crossorigin="anonymous" referrerpolicy="no-referrer" class="${fluid ? "w-9 h-9 sm:w-11 sm:h-11" : "w-11 h-11"} rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}">
+                    ${avatarImgHtml(avatar, m.name, `${fluid ? "w-9 h-9 sm:w-11 sm:h-11" : "w-11 h-11"} rounded-lg object-cover border border-slate-200 ${!isAlive ? "grayscale" : ""}`)}
                     ${!isAlive ? '<div class="absolute -top-1 -right-1 bg-slate-800 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]" title="Sudah Wafat"><i class="fa-solid fa-ribbon"></i></div>' : ""}
                 </div>
                 <div class="flex-1 min-w-0 text-xs">
@@ -4457,11 +4481,37 @@
         return /iphone|ipad|ipod/i.test(navigator.userAgent);
       }
 
+      function initOfflineStatus() {
+        const syncStatus = (eventType) => {
+          document.body.classList.toggle("is-offline", !navigator.onLine);
+          if (eventType === "offline") {
+            showToast(
+              "Mode offline. Data tetap tersimpan di perangkat ini.",
+              "info",
+            );
+          } else if (eventType === "online") {
+            showToast("Koneksi kembali.", "success");
+          }
+        };
+        window.addEventListener("online", () => syncStatus("online"));
+        window.addEventListener("offline", () => syncStatus("offline"));
+        syncStatus();
+      }
+
       function initPwa() {
         if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("./sw.js").catch((err) => {
-            console.warn("Pendaftaran service worker gagal", err);
-          });
+          navigator.serviceWorker
+            .register("./sw.js", { updateViaCache: "none" })
+            .then((reg) => reg.update())
+            .catch((err) => {
+              console.warn("Pendaftaran service worker gagal", err);
+            });
+        }
+
+        initOfflineStatus();
+
+        if (navigator.storage && navigator.storage.persist) {
+          navigator.storage.persist().catch(() => {});
         }
 
         const banner = document.getElementById("pwaInstallBanner");
